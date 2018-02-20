@@ -1,4 +1,4 @@
-package org.basinmc.blackwater.cache;
+package org.basinmc.blackwater.artifact.cache;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import org.basinmc.blackwater.artifact.ArtifactReference;
-import org.basinmc.blackwater.artifact.cache.Cache;
-import org.basinmc.blackwater.artifact.cache.LocalFileCache;
 import org.junit.Assert;
 import org.junit.Test;
 

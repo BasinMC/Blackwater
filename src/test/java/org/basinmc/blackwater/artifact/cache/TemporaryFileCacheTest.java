@@ -1,10 +1,9 @@
-package org.basinmc.blackwater.cache;
+package org.basinmc.blackwater.artifact.cache;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.basinmc.blackwater.artifact.ArtifactReference;
-import org.basinmc.blackwater.artifact.cache.TemporaryFileCache;
 import org.junit.Assert;
 import org.junit.Test;
 
