@@ -40,6 +40,16 @@ public class GitInitializeRepositoryTask extends AbstractConfigurableTask {
   }
 
   /**
+   * Constructs a new task factory.
+   *
+   * @return a factory.
+   */
+  @NonNull
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -75,10 +85,13 @@ public class GitInitializeRepositoryTask extends AbstractConfigurableTask {
   /**
    * Provides a factory for the git initialization task.
    */
-  public static class Builder extends
+  public static final class Builder extends
       AbstractConfigurableTask.Builder<GitInitializeRepositoryTask> {
 
     private Path path;
+
+    private Builder() {
+    }
 
     /**
      * Constructs a new git initialization task.
