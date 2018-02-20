@@ -17,6 +17,7 @@ import java.util.function.Function;
 import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.basinmc.blackwater.utility.ProcessGobbler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,16 +83,8 @@ public class CommandTask extends AbstractConfigurableTask {
     try {
       Process process = builder.start();
 
-      Thread outputPipe = new Thread(
-          () -> this.redirectLog(logger::info, process.getInputStream()));
-      outputPipe.setName("Log-Pipe");
-
-      Thread errorPipe = new Thread(
-          () -> this.redirectLog(logger::error, process.getErrorStream()));
-      errorPipe.setName("Log-Pipe");
-
-      outputPipe.start();
-      errorPipe.start();
+      ProcessGobbler gobbler = new ProcessGobbler(process, logger);
+      gobbler.start();
 
       int exitValue = process.waitFor();
       TaskExecutionException exception = this.exitValueFunction.apply(exitValue);
