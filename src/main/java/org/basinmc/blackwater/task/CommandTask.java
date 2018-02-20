@@ -50,6 +50,16 @@ public class CommandTask extends AbstractConfigurableTask {
   }
 
   /**
+   * Creates a new factory for command task instances.
+   *
+   * @return a task factory.
+   */
+  @NonNull
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
