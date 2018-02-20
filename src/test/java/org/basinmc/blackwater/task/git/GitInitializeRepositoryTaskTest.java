@@ -1,10 +1,12 @@
-package org.basinmc.blackwater.task;
+package org.basinmc.blackwater.task.git;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.Task.Context;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.basinmc.blackwater.task.git.GitInitializeRepositoryTask;
 import org.junit.Test;
 import org.mockito.Mockito;
 

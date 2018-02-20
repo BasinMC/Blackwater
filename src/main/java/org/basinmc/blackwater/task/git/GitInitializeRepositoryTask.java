@@ -1,4 +1,4 @@
-package org.basinmc.blackwater.task;
+package org.basinmc.blackwater.task.git;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.util.Set;
 import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
+import org.basinmc.blackwater.task.AbstractConfigurableTask;
+import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
 import org.eclipse.jgit.api.InitCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
