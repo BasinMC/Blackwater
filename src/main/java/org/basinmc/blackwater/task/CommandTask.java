@@ -1,7 +1,10 @@
 package org.basinmc.blackwater.task;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -9,10 +12,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provides a task which invokes an arbitrary executable.
@@ -20,6 +26,8 @@ import org.basinmc.blackwater.task.error.TaskExecutionException;
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
 public class CommandTask extends AbstractConfigurableTask {
+
+  private static final Logger logger = LoggerFactory.getLogger(CommandTask.class);
 
   private final List<String> command = new ArrayList<>();
   private final Path workingDirectory;
@@ -53,7 +61,20 @@ public class CommandTask extends AbstractConfigurableTask {
     environmentVariables.putAll(this.environmentVariables);
 
     try {
-      int exitValue = builder.start().waitFor();
+      Process process = builder.start();
+
+      Thread outputPipe = new Thread(
+          () -> this.redirectLog(logger::info, process.getInputStream()));
+      outputPipe.setName("Log-Pipe");
+
+      Thread errorPipe = new Thread(
+          () -> this.redirectLog(logger::error, process.getErrorStream()));
+      errorPipe.setName("Log-Pipe-Error");
+
+      outputPipe.start();
+      errorPipe.start();
+
+      int exitValue = process.waitFor();
       TaskExecutionException exception = this.exitValueFunction.apply(exitValue);
 
       if (exception != null) {
@@ -61,6 +82,25 @@ public class CommandTask extends AbstractConfigurableTask {
       }
     } catch (InterruptedException | IOException ex) {
       throw new TaskExecutionException("Failed to invoke command: " + ex.getMessage(), ex);
+    }
+  }
+
+  /**
+   * Redirects the output of an arbitrary stream into a specified log function.
+   *
+   * @param logFunction a log function to pass the output to.
+   * @param inputStream an input stream to read from.
+   */
+  @SuppressWarnings("ImplicitDefaultCharsetUsage")
+  private void redirectLog(
+      @NonNull Consumer<String> logFunction,
+      @NonNull InputStream inputStream) {
+    try (InputStreamReader streamReader = new InputStreamReader(inputStream)) {
+      try (BufferedReader reader = new BufferedReader(streamReader)) {
+        reader.lines().forEach((l) -> logFunction.accept("    " + l));
+      }
+    } catch (IOException ex) {
+      logger.warn("Failed to redirect output: " + ex.getMessage(), ex);
     }
   }
 
