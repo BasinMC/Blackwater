@@ -34,7 +34,7 @@ public class CommandTask extends AbstractConfigurableTask {
   private final Map<String, String> environmentVariables = new HashMap<>();
   private final Function<Integer, TaskExecutionException> exitValueFunction;
 
-  protected CommandTask(
+  private CommandTask(
       @NonNull List<String> command,
       @NonNull Path workingDirectory,
       @NonNull Map<String, String> environmentVariables,
@@ -130,6 +130,9 @@ public class CommandTask extends AbstractConfigurableTask {
 
       return null;
     };
+
+    private Builder() {
+    }
 
     /**
      * Constructs a new command task based on the configuration of this builder.
