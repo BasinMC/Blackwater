@@ -79,7 +79,7 @@ public class CommandTask extends AbstractConfigurableTask {
 
       Thread errorPipe = new Thread(
           () -> this.redirectLog(logger::error, process.getErrorStream()));
-      errorPipe.setName("Log-Pipe-Error");
+      errorPipe.setName("Log-Pipe");
 
       outputPipe.start();
       errorPipe.start();
