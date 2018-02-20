@@ -55,6 +55,15 @@ public class ArtifactManager {
   }
 
   /**
+   * Evaluates whether or not caching is currently enabled.
+   *
+   * @return true if caching, false otherwise.
+   */
+  public boolean isCachingEnabled() {
+    return this.cache != null;
+  }
+
+  /**
    * Registers a new artifact with the manager.
    *
    * @param reference an artifact reference.

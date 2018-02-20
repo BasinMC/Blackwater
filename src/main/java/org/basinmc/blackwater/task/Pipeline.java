@@ -1,7 +1,6 @@
 package org.basinmc.blackwater.task;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,15 +36,13 @@ import org.basinmc.blackwater.task.error.TaskExecutionException;
  */
 public class Pipeline {
 
-  private final boolean cacheDisabled;
   private final ArtifactManager artifactManager;
 
   private final ContextImpl context = new ContextImpl();
   private final List<Task> taskQueue = new ArrayList<>();
 
-  private Pipeline(@Nullable Cache cache, @NonNull Set<Task> tasks) {
-    this.artifactManager = new ArtifactManager(cache);
-    this.cacheDisabled = cache == null;
+  private Pipeline(@NonNull ArtifactManager artifactManager, @NonNull Set<Task> tasks) {
+    this.artifactManager = artifactManager;
 
     this.taskQueue.addAll(tasks);
     this.taskQueue.sort(new Task.Comparator());
@@ -78,7 +75,7 @@ public class Pipeline {
       // if caching is enabled, we may clear our temporary files every time a task has finished its
       // execution as we won't accidentally delete any of the newly registered artifacts in this
       // case
-      if (!this.cacheDisabled) {
+      if (this.artifactManager.isCachingEnabled()) {
         try {
           this.context.releaseTemporaryFiles();
         } catch (IOException ex) {
@@ -190,6 +187,7 @@ public class Pipeline {
 
     private Cache cache;
     private final Set<Task> tasks = new HashSet<>();
+    private final Set<Task.Builder<?>> taskBuilders = new HashSet<>();
 
     private Builder() {
     }
@@ -201,7 +199,16 @@ public class Pipeline {
      */
     @NonNull
     public Pipeline build() {
-      return new Pipeline(this.cache, this.tasks);
+      ArtifactManager manager = new ArtifactManager(this.cache);
+
+      Set<Task> tasks = new HashSet<>(this.tasks);
+      tasks.addAll(
+          this.taskBuilders.stream()
+              .map((b) -> b.build(manager))
+              .collect(Collectors.toSet())
+      );
+
+      return new Pipeline(manager, this.tasks);
     }
 
     /**
@@ -236,6 +243,18 @@ public class Pipeline {
     @NonNull
     public Builder withTask(@NonNull Task task) {
       this.tasks.add(task);
+      return this;
+    }
+
+    /**
+     * Selects an additional task for the new pipeline.
+     *
+     * @param builder a custom task builder implementation.
+     * @return a reference to this builder instance.
+     */
+    @NonNull
+    public Builder withTask(@NonNull Task.Builder<?> builder) {
+      this.taskBuilders.add(builder);
       return this;
     }
 

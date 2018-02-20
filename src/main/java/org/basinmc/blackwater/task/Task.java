@@ -89,6 +89,24 @@ public interface Task {
   }
 
   /**
+   * Provides a base for task builder implementations which make use of the {@link InputFile} API.
+   *
+   * @param <T> a task type.
+   */
+  @FunctionalInterface
+  interface Builder<T extends Task> {
+
+    /**
+     * Constructs a new task instance using the properties within this builder.
+     *
+     * @param manager a reference to the new artifact manager instance.
+     * @return a task instance.
+     */
+    @NonNull
+    T build(@NonNull ArtifactManager manager);
+  }
+
+  /**
    * <p>Provides a comparator implementation which sorts tasks in collections based on their
    * dependency definitions.</p>
    *
