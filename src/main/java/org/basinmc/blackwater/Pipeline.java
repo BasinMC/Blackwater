@@ -24,6 +24,8 @@ import org.basinmc.blackwater.task.Task.Context;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>Provides a pre-configured pipeline of multiple tasks which are executed in the order they are
@@ -36,6 +38,8 @@ import org.basinmc.blackwater.task.error.TaskExecutionException;
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
 public final class Pipeline {
+
+  private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
 
   private final ArtifactManager artifactManager;
 
@@ -71,6 +75,20 @@ public final class Pipeline {
     this.validate();
 
     for (Task task : this.taskQueue) {
+      logger.info("--- Task {} ---", task.getClass().getName());
+
+      // if the task permits skipping when its artifacts are already within the cache, we'll
+      // evaluate the possibility (assuming that the task defines any artifacts)
+      if (task.permitsSkipping()) {
+        Set<ArtifactReference> artifacts = task.getCreatedArtifacts();
+
+        if (!artifacts.isEmpty() && artifacts.stream()
+            .allMatch((r) -> this.artifactManager.getArtifact(r).isPresent())) {
+          logger.info("Cached - Skipping execution");
+          continue;
+        }
+      }
+
       task.execute(this.context);
 
       // if caching is enabled, we may clear our temporary files every time a task has finished its

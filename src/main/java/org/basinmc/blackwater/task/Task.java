@@ -89,6 +89,16 @@ public interface Task {
   }
 
   /**
+   * Evaluates whether this task permits skipping when its artifacts are present within the selected
+   * cache implementation.
+   *
+   * @return true if skipping is permitted, false otherwise.
+   */
+  default boolean permitsSkipping() {
+    return true;
+  }
+
+  /**
    * Provides a base for task builder implementations which make use of the {@link InputFile} API.
    *
    * @param <T> a task type.
