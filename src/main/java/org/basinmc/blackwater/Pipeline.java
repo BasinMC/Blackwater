@@ -75,7 +75,7 @@ public final class Pipeline {
     this.validate();
 
     for (Task task : this.taskQueue) {
-      logger.info("--- Task {} ---", task.getClass().getName());
+      logger.info("--- Task {} ---", task.getName());
 
       // if the task permits skipping when its artifacts are already within the cache, we'll
       // evaluate the possibility (assuming that the task defines any artifacts)

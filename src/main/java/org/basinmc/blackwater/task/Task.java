@@ -40,6 +40,17 @@ public interface Task {
   }
 
   /**
+   * <p>Retrieves a human readable name for this task.</p>
+   *
+   * <p>The name returned by this method will be used for logging and other debugging purposes
+   * only.</p>
+   */
+  @NonNull
+  default String getName() {
+    return this.getClass().getSimpleName();
+  }
+
+  /**
    * <p>Retrieves a set of tasks which this task intends to run after (if present within the
    * pipeline).</p>
    *
