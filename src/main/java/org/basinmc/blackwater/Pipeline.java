@@ -1,4 +1,4 @@
-package org.basinmc.blackwater.task;
+package org.basinmc.blackwater;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
@@ -19,6 +19,7 @@ import org.basinmc.blackwater.artifact.ArtifactReference;
 import org.basinmc.blackwater.artifact.cache.Cache;
 import org.basinmc.blackwater.artifact.cache.LocalFileCache;
 import org.basinmc.blackwater.artifact.cache.TemporaryFileCache;
+import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.Task.Context;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;

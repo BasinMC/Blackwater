@@ -1,7 +1,9 @@
-package org.basinmc.blackwater.task;
+package org.basinmc.blackwater;
 
 import java.util.Collections;
+import org.basinmc.blackwater.Pipeline;
 import org.basinmc.blackwater.artifact.ArtifactReference;
+import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.junit.Test;
