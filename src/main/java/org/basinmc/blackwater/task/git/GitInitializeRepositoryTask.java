@@ -52,6 +52,15 @@ public class GitInitializeRepositoryTask extends AbstractConfigurableTask {
   /**
    * {@inheritDoc}
    */
+  @NonNull
+  @Override
+  public String getName() {
+    return "git-init";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
     logger.info("Creating repository in {}", this.path);

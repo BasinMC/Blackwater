@@ -62,6 +62,15 @@ public class CommandTask extends AbstractConfigurableTask {
   /**
    * {@inheritDoc}
    */
+  @NonNull
+  @Override
+  public String getName() {
+    return "command";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
     ProcessBuilder builder = new ProcessBuilder(this.command)
