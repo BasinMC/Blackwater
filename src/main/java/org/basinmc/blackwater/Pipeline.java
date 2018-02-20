@@ -35,7 +35,7 @@ import org.basinmc.blackwater.task.error.TaskExecutionException;
  *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
-public class Pipeline {
+public final class Pipeline {
 
   private final ArtifactManager artifactManager;
 
@@ -184,7 +184,7 @@ public class Pipeline {
   /**
    * Provides a factory for customized pipeline instances.
    */
-  public static class Builder {
+  public static final class Builder {
 
     private Cache cache;
     private final Set<Task> tasks = new HashSet<>();
