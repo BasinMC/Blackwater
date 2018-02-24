@@ -20,7 +20,10 @@ public interface Artifact extends AutoCloseable {
   void close() throws IOException;
 
   /**
-   * Retrieves the date and time at which this artifact was initially created.
+   * <p>Retrieves the date and time at which this artifact was initially created.</p>
+   *
+   * <p>When this feature is not supported by the backing implementation, {@link Instant#EPOCH}
+   * should be returned instead.</p>
    *
    * @return a timestamp.
    * @throws IOException when reading the creation timestamp fails.
@@ -29,7 +32,10 @@ public interface Artifact extends AutoCloseable {
   Instant getCreationTimestamp() throws IOException;
 
   /**
-   * Retrieves the date and time at which this artifact was last modified.
+   * <p>Retrieves the date and time at which this artifact was last modified.</p>
+   *
+   * <p>When this feature is not supported by the backing implementation, {@link Instant#EPOCH}
+   * should be returned instead.</p>
    *
    * @return a timestamp.
    * @throws IOException when reading the modification timestamp fails.
