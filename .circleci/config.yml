@@ -21,7 +21,7 @@ jobs:
           key: v1-dependencies-{{ checksum "pom.xml" }}
       - run: mvn clean package
       - store_test_results:
-          path: target/surefire-reports
+          path: pipeline/target/surefire-reports
       - run: |
           mkdir /tmp/artifacts/
           cp target/org.basinmc.blackwater-*.jar /tmp/artifacts/
