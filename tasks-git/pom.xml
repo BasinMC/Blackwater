@@ -11,7 +11,8 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>tasks-pipeline</artifactId>
+  <groupId>org.basinmc.blackwater.tasks</groupId>
+  <artifactId>pipeline</artifactId>
 
   <!-- Artifact Metadata -->
   <name>Blackwater Git Tasks</name>
