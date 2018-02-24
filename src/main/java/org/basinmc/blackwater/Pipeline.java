@@ -17,6 +17,8 @@ import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.basinmc.blackwater.task.error.TaskParameterException;
+import org.basinmc.blackwater.utility.CloseableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +40,7 @@ public final class Pipeline {
   private final List<TaskRegistration> taskQueue;
 
   private Pipeline(
-      @NonNull ArtifactManager artifactManager,
+      @Nullable ArtifactManager artifactManager,
       @NonNull List<TaskRegistration> tasks) {
     this.artifactManager = artifactManager;
     this.taskQueue = new ArrayList<>(tasks);
@@ -51,126 +53,184 @@ public final class Pipeline {
    * @throws TaskDependencyException when task execution fails due to one or more missing
    * dependencies.
    * @throws TaskExecutionException when a task fails during its execution.
+   * @throws TaskParameterException when one or more task parameters are outside of their expected
+   * bounds.
    */
   public void execute() throws TaskException {
     for (TaskRegistration registration : this.taskQueue) {
-      logger.info("--- Task {} ---", registration.task.getName());
+      this.execute(registration);
+    }
+  }
 
-      // before we can even think about executing the task, we'll have to evaluate whether there are
-      // any inputs for this task and if so whether we have access to them (e.g. when we are passed
-      // an input artifact, we'll have to fail early if it does not exist yet)
-      Artifact inputArtifact = null;
-      Path inputPath = registration.inputFile;
+  /**
+   * Executes a single task registration.
+   *
+   * @param registration a registration.
+   * @throws TaskException when the execution fails.
+   */
+  private void execute(@Nonnull TaskRegistration registration) throws TaskException {
+    logger.info("--- Task {} ---", registration.task.getName());
 
-      try {
-        if (registration.inputArtifact != null) {
-          try {
-            inputArtifact = this.artifactManager.getArtifact(registration.inputArtifact)
-                .orElseThrow(() -> new TaskDependencyException(
-                    "Unsatisfied task input: Artifact " + registration.inputArtifact
-                        + " does not exist"));
-            inputPath = inputArtifact.getPath();
-          } catch (IOException ex) {
-            throw new TaskDependencyException(
-                "Unsatisfied task input: Cannot access cached artifact "
-                    + registration.inputArtifact
-                    .getIdentifier() + ": " + ex.getMessage(), ex);
-          }
+    try (CloseableTaskResource input = this.getInputPath(registration);
+        CloseableTaskResource output = this.getOutputPath(registration)) {
+      // before we're just blindly executing the task, we'll evaluate whether its output artifact
+      // already exists and is still considered valid to save ourselves some valuable time here
+      if (!registration.enforceExecution && output.artifact != null) {
+        logger.info("Evaluating cached version of artifact {}", registration.outputArtifact);
+
+        assert output.getResource() != null;
+        if (registration.task.isValidArtifact(output.artifact, output.getResource())) {
+          logger.info("Valid artifact cache - Skipped");
+          return;
         }
 
-        // next up, we'll have to figure out whether our output is going to a file or artifact (if
-        // we're writing to an artifact, we'll have to consider caching most likely)
-        Path tempBase = null;
-        Path outputPath = registration.outputFile;
+        logger.info("Artifact expired - Recreating");
+      } else if (registration.enforceExecution) {
+        logger.info("Task execution enforced - Cache check omitted");
+      }
+
+      // since the cache does not contain a valid version of the task output (or no artifact is
+      // being used), we have no choice but to execute the task
+      registration.task.execute(new ContextImpl(input.getResource(), output.getResource()));
+
+      // if caching the task output in an artifact is desired, we'll have to write the task output
+      // back to the artifact manager here
+      if (registration.outputArtifact != null) {
+        assert this.artifactManager != null;
+        assert output.getResource() != null;
 
         try {
-          if (registration.outputArtifact != null) {
-            try {
-              if (!registration.enforceExecution) {
-                Artifact cachedArtifact = this.artifactManager
-                    .getArtifact(registration.outputArtifact)
-                    .orElse(null);
-
-                if (cachedArtifact != null) {
-                  logger.info("Evaluating cached version of output artifact {}",
-                      registration.outputArtifact.getIdentifier());
-
-                  if (registration.task.isValidArtifact(cachedArtifact, cachedArtifact.getPath())) {
-                    logger.info("Cached result - Skipped");
-                    continue;
-                  }
-
-                  logger.info("Cached artifact has expired - Recreating");
-                }
-              } else {
-                logger.info("Task execution enforced - Skipped cache check");
-              }
-            } catch (IOException ex) {
-              throw new TaskDependencyException(
-                  "Unsatisfied task output: Cannot access cached artifact "
-                      + registration.outputArtifact.getIdentifier() + ": " + ex.getMessage(), ex);
-            }
-
-            try {
-              // in this case we'll allocate a temporary directory that we'll store all of our stuff
-              // in for now (the path we're passing to the task is nondescript and may either be a
-              // file or directory at the end of its invocation, handling is up to the artifact
-              // manager
-              tempBase = Files.createTempDirectory("blackwater_");
-              outputPath = tempBase.resolve("output");
-            } catch (IOException ex) {
-              throw new TaskExecutionException(
-                  "Failed to allocate temporary output directory: " + ex.getMessage(), ex);
-            }
-          }
-
-          // we've collected all necessary parameters, thus we can now actually perform the task
-          // execution itself
-          try (ContextImpl ctx = new ContextImpl(inputPath, outputPath)) {
-            registration.task.execute(ctx);
-          } catch (IOException ex) {
-            throw new TaskExecutionException("Failed to clean up: " + ex.getMessage(), ex);
-          }
-
-          // since the task executed just fine, we'll have to evaluate whether the task stores its
-          // results in an artifact and if so, notify the artifact manager
-          if (registration.outputArtifact != null) {
-            logger.info("Writing task output back to artifact {}",
-                registration.outputArtifact.getIdentifier());
-
-            try {
-              this.artifactManager.createArtifact(registration.outputArtifact, outputPath);
-            } catch (IOException ex) {
-              throw new TaskExecutionException(
-                  "Failed to write artifact " + registration.outputArtifact.getIdentifier()
-                      + " to cache: " + ex.getMessage(), ex);
-            }
-          }
-
-          logger.info("Success");
-        } finally {
-          if (tempBase != null) {
-            try {
-              Iterator<Path> it = Files.walk(tempBase)
-                  .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
-                  .iterator();
-
-              while (it.hasNext()) {
-                Files.deleteIfExists(it.next());
-              }
-            } catch (IOException ex) {
-              logger.error("Failed to clean up temporary execution files: " + ex.getMessage(), ex);
-            }
-          }
-        }
-      } finally {
-        if (inputArtifact != null) {
-          try {
-            inputArtifact.close();
-          } catch (IOException ignore) {
-          }
+          this.artifactManager.createArtifact(registration.outputArtifact, output.getResource());
+        } catch (IOException ex) {
+          throw new TaskExecutionException(
+              "Failed to store task output in artifact " + registration.outputArtifact
+                  .getIdentifier() + ": " + ex.getMessage(), ex);
         }
       }
+    }
+  }
+
+  /**
+   * Retrieves a wrapped input path which is automatically cleaned up at the end of its lifecycle.
+   *
+   * @param registration a task registration.
+   * @return a wrapped input path.
+   * @throws TaskDependencyException when an input artifact is specified but no cached version
+   * exists.
+   */
+  @Nonnull
+  private CloseableTaskResource getInputPath(
+      @Nonnull TaskRegistration registration) throws TaskDependencyException {
+    // if we've been given a specific input file, we'll simply wrap the path and return it as-is as
+    // we have no real reason to do any cleanup
+    if (registration.inputFile != null) {
+      return new CloseableTaskResource(registration.inputFile, null, () -> {
+      });
+    }
+
+    // otherwise things are a little more complex as we'll have to find the referenced artifact and
+    // wrap it for the purposes of this call
+    if (registration.inputArtifact != null) {
+      // since users can omit the artifact manager in cases where no task relies on it, we'll have
+      // to ensure that there is one configured in this pipeline as well
+      if (this.artifactManager == null) {
+        throw new TaskDependencyException(
+            "Unsatisfied task input: Cannot resolve artifact " + registration.inputArtifact
+                .getIdentifier() + " without configured artifact manager");
+      }
+
+      try {
+        Artifact artifact = this.artifactManager.getArtifact(registration.inputArtifact)
+            .orElseThrow(() -> new TaskDependencyException(
+                "Unsatisfied task input: Cannot find cached version of artifact "
+                    + registration.inputArtifact.getIdentifier()));
+
+        return new CloseableTaskResource(artifact.getPath(), artifact, () -> {
+          try {
+            artifact.close();
+          } catch (IOException ex) {
+            throw new TaskExecutionException(
+                "Failed to release input artifact " + registration.inputArtifact.getIdentifier()
+                    + ": " + ex.getMessage(), ex);
+          }
+        });
+      } catch (IOException ex) {
+        throw new TaskDependencyException(
+            "Unsatisfied task input: Cannot access cached version of artifact "
+                + registration.inputArtifact.getIdentifier() + ": " + ex.getMessage(), ex);
+      }
+    }
+
+    // if no input has been specified at all, we'll simply wrap null
+    return new CloseableTaskResource(null, null, () -> {
+    });
+  }
+
+  @Nonnull
+  private CloseableTaskResource getOutputPath(
+      @Nonnull TaskRegistration registration) throws TaskException {
+    // if we've been given a specific output file, we'll simply wrap the path and return it as-is as
+    // we have no real reason to do any cleanup
+    if (registration.outputFile != null) {
+      return new CloseableTaskResource(registration.outputFile, null, () -> {
+      });
+    }
+
+    // otherwise things get a little more complicated as we'll have to allocate a temporary
+    // directory to store the output file or directory in (we'll also need to clean these up again
+    // obviously)
+    if (registration.outputArtifact != null) {
+      // since users can omit the artifact manager in cases where no task relies on it, we'll have
+      // to ensure that there is one configured in this pipeline as well
+      if (this.artifactManager == null) {
+        throw new TaskDependencyException(
+            "Unsatisfied task output: Cannot resolve artifact " + registration.outputArtifact
+                .getIdentifier() + " without configured artifact manager");
+      }
+
+      try {
+        Path basePath = Files.createTempDirectory("blackwater_task_");
+        Path outputPath = basePath.resolve("output");
+
+        return new CloseableTaskResource(outputPath, null, () -> {
+          try {
+            Iterator<Path> it = Files.walk(basePath)
+                .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
+                .iterator();
+
+            while (it.hasNext()) {
+              Files.deleteIfExists(it.next());
+            }
+          } catch (IOException ex) {
+            throw new TaskExecutionException(
+                "Failed to clean up temporary task output: " + ex.getMessage(), ex);
+          }
+        });
+      } catch (IOException ex) {
+        throw new TaskExecutionException(
+            "Failed to allocate temporary output directory: " + ex.getMessage(), ex);
+      }
+    }
+
+    // if no output is desired, we'll simply wrap null
+    return new CloseableTaskResource(null, null, () -> {
+    });
+  }
+
+  /**
+   * Provides an extension to the closeable resource implementation to permit passing of artifacts.
+   */
+  private static final class CloseableTaskResource extends
+      CloseableResource<Path, TaskExecutionException> {
+
+    private final Artifact artifact;
+
+    private CloseableTaskResource(
+        @Nullable Path resource,
+        @Nullable Artifact artifact,
+        @Nonnull CleanupProvider<TaskExecutionException> cleanupProvider) {
+      super(resource, cleanupProvider);
+      this.artifact = artifact;
     }
   }
 
