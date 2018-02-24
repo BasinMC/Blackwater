@@ -212,7 +212,10 @@ public final class Pipeline {
         Path basePath = Files.createTempDirectory("blackwater_task_");
         Path outputPath = basePath.resolve("output");
 
-        return new CloseableTaskResource(outputPath, null, () -> {
+        Artifact artifact = this.artifactManager.getArtifact(registration.outputArtifact)
+            .orElse(null);
+
+        return new CloseableTaskResource(outputPath, artifact, () -> {
           try {
             Iterator<Path> it = Files.walk(basePath)
                 .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
