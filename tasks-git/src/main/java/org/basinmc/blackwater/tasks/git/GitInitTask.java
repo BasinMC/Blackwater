@@ -26,14 +26,14 @@ public class GitInitTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path outputPath = context.getOutputPath()
-        .orElseThrow(() -> new TaskParameterException("Output path is required"));
+    Path inputPath = context.getInputPath()
+        .orElseThrow(() -> new TaskParameterException("Input path is required"));
 
-    if (outputPath.getFileSystem() != FileSystems.getDefault()) {
-      throw new TaskParameterException("Output path cannot be on a custom filesystem");
+    if (inputPath.getFileSystem() != FileSystems.getDefault()) {
+      throw new TaskParameterException("Input path cannot be on a custom filesystem");
     }
 
-    if (Files.exists(outputPath.resolve(".git"))) {
+    if (Files.exists(inputPath.resolve(".git"))) {
       logger.info("Repository exists - Skipped execution");
       return;
     }
@@ -41,7 +41,7 @@ public class GitInitTask implements Task {
     try {
       logger.info("Creating a new empty git repository");
       new InitCommand()
-          .setDirectory(outputPath.toFile())
+          .setDirectory(inputPath.toFile())
           .call();
     } catch (GitAPIException ex) {
       throw new TaskExecutionException("Failed to create repository: " + ex.getMessage(), ex);

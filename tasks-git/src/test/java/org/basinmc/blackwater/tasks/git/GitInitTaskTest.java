@@ -59,7 +59,7 @@ public class GitInitTaskTest {
   @Test
   public void testCreation() throws TaskExecutionException, IOException {
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getOutputPath())
+    Mockito.when(context.getInputPath())
         .thenReturn(Optional.of(this.base));
 
     Task task = new GitInitTask();
@@ -80,7 +80,7 @@ public class GitInitTaskTest {
     Files.createDirectories(repositoryPath);
 
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getOutputPath())
+    Mockito.when(context.getInputPath())
         .thenReturn(Optional.of(this.base));
 
     Task task = new GitInitTask();
