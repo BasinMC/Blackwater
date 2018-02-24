@@ -2,8 +2,8 @@
 [![GitHub Release](https://img.shields.io/github/release/BasinMC/Blackwater.svg?style=flat-square)](https://github.com/BasinMC/Blackwater/releases)
 [![CircleCI](https://img.shields.io/circleci/project/github/BasinMC/Blackwater.svg?style=flat-square)](https://circleci.com/gh/BasinMC/Blackwater)
 
-Plunger
-=======
+Blackwater
+==========
 
 A generic framework for chaining build tasks in various build systems.
 
