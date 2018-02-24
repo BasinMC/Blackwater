@@ -19,7 +19,7 @@ jobs:
           paths:
             - ~/.m2
           key: v1-dependencies-{{ checksum "pom.xml" }}
-      - run: mvn clean package
+      - run: mvn clean install
       - store_test_results:
           path: pipeline/target/surefire-reports
       - run: |
