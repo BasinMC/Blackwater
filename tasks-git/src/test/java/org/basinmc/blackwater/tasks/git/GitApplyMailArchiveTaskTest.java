@@ -15,10 +15,15 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 /**
+ * Provides test cases which evaluate whether {@link GitApplyMailArchiveTask} operates as expected.
+ *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
 public class GitApplyMailArchiveTaskTest extends AbstractExecutableGitTaskTest {
 
+  /**
+   * Evaluates whether the task correctly applies a set of patches to a test file.
+   */
   @Test
   public void testExecute() throws IOException, GitAPIException, TaskExecutionException {
     this.extract("/am-apply/test", Paths.get("test"));
