@@ -12,7 +12,7 @@
   </parent>
 
   <groupId>org.basinmc.blackwater.tasks</groupId>
-  <artifactId>pipeline</artifactId>
+  <artifactId>git</artifactId>
 
   <!-- Artifact Metadata -->
   <name>Blackwater Git Tasks</name>
