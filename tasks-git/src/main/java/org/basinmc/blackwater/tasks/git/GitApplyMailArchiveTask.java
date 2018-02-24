@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Provides a task capable of applying arbitrary patches to a git repository.
+ *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
 public class GitApplyMailArchiveTask extends AbstractExecutableTask {
