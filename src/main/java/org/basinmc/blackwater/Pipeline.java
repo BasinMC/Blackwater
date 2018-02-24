@@ -2,25 +2,18 @@ package org.basinmc.blackwater;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Optional;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.basinmc.blackwater.artifact.Artifact;
 import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
-import org.basinmc.blackwater.artifact.cache.Cache;
-import org.basinmc.blackwater.artifact.cache.LocalFileCache;
-import org.basinmc.blackwater.artifact.cache.TemporaryFileCache;
 import org.basinmc.blackwater.task.Task;
-import org.basinmc.blackwater.task.Task.Context;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
@@ -42,25 +35,13 @@ public final class Pipeline {
   private static final Logger logger = LoggerFactory.getLogger(Pipeline.class);
 
   private final ArtifactManager artifactManager;
+  private final List<TaskRegistration> taskQueue;
 
-  private final ContextImpl context = new ContextImpl();
-  private final List<Task> taskQueue = new ArrayList<>();
-
-  private Pipeline(@NonNull ArtifactManager artifactManager, @NonNull Set<Task> tasks) {
+  private Pipeline(
+      @NonNull ArtifactManager artifactManager,
+      @NonNull List<TaskRegistration> tasks) {
     this.artifactManager = artifactManager;
-
-    this.taskQueue.addAll(tasks);
-    this.taskQueue.sort(new Task.Comparator());
-  }
-
-  /**
-   * Constructs a new empty builder instance.
-   *
-   * @return an empty builder.
-   */
-  @NonNull
-  public static Builder builder() {
-    return new Builder();
+    this.taskQueue = new ArrayList<>(tasks);
   }
 
   /**
@@ -72,229 +53,216 @@ public final class Pipeline {
    * @throws TaskExecutionException when a task fails during its execution.
    */
   public void execute() throws TaskException {
-    this.validate();
+    for (TaskRegistration registration : this.taskQueue) {
+      logger.info("--- Task {} ---", registration.task.getName());
 
-    for (Task task : this.taskQueue) {
-      logger.info("--- Task {} ---", task.getName());
+      // before we can even think about executing the task, we'll have to evaluate whether there are
+      // any inputs for this task and if so whether we have access to them (e.g. when we are passed
+      // an input artifact, we'll have to fail early if it does not exist yet)
+      Artifact inputArtifact = null;
+      Path inputPath = registration.inputFile;
 
-      // if the task permits skipping when its artifacts are already within the cache, we'll
-      // evaluate the possibility (assuming that the task defines any artifacts)
-      if (task.permitsSkipping()) {
-        Set<ArtifactReference> artifacts = task.getCreatedArtifacts();
-
-        if (!artifacts.isEmpty() && artifacts.stream()
-            .allMatch((r) -> this.artifactManager.getArtifact(r).isPresent())) {
-          logger.info("Cached - Skipping execution");
-          continue;
+      try {
+        if (registration.inputArtifact != null) {
+          try {
+            inputArtifact = this.artifactManager.getArtifact(registration.inputArtifact)
+                .orElseThrow(() -> new TaskDependencyException(
+                    "Unsatisfied task input: Artifact " + registration.inputArtifact
+                        + " does not exist"));
+            inputPath = inputArtifact.getPath();
+          } catch (IOException ex) {
+            throw new TaskDependencyException(
+                "Unsatisfied task input: Cannot access cached artifact "
+                    + registration.inputArtifact
+                    .getIdentifier() + ": " + ex.getMessage(), ex);
+          }
         }
-      }
 
-      task.execute(this.context);
+        // next up, we'll have to figure out whether our output is going to a file or artifact (if
+        // we're writing to an artifact, we'll have to consider caching most likely)
+        Path tempBase = null;
+        Path outputPath = registration.outputFile;
 
-      // if caching is enabled, we may clear our temporary files every time a task has finished its
-      // execution as we won't accidentally delete any of the newly registered artifacts in this
-      // case
-      if (this.artifactManager.isCachingEnabled()) {
         try {
-          this.context.releaseTemporaryFiles();
-        } catch (IOException ex) {
-          throw new TaskExecutionException("Failed to release temporary files: " + ex.getMessage(),
-              ex);
-        }
-      }
-    }
+          if (registration.outputArtifact != null) {
+            try {
+              if (!registration.enforceExecution) {
+                Artifact cachedArtifact = this.artifactManager
+                    .getArtifact(registration.outputArtifact)
+                    .orElse(null);
 
-    try {
-      this.context.releaseTemporaryFiles();
-    } catch (IOException ex) {
-      throw new TaskExecutionException("Failed to release temporary files: " + ex.getMessage(), ex);
-    }
-  }
+                if (cachedArtifact != null) {
+                  logger.info("Evaluating cached version of output artifact {}",
+                      registration.outputArtifact.getIdentifier());
 
-  /**
-   * Evaluates whether the pipeline contains all required tasks and artifacts.
-   *
-   * @throws TaskDependencyException when one or more tasks or artifacts are missing within the
-   * pipeline.
-   */
-  public void validate() throws TaskDependencyException {
-    // first of all, we'll evaluate whether all required tasks are present within the pipeline at
-    // the moment as this is the most important constraint placed on any given task
-    Set<Class<?>> missingTasks = this.taskQueue.stream()
-        .flatMap((t) -> t.getRequiredTasks().stream())
-        .filter((c) -> this.taskQueue.stream().noneMatch(c::isInstance))
-        .collect(Collectors.toSet());
+                  if (registration.task.isValidArtifact(cachedArtifact, cachedArtifact.getPath())) {
+                    logger.info("Cached result - Skipped");
+                    continue;
+                  }
 
-    if (!missingTasks.isEmpty()) {
-      StringBuilder message = new StringBuilder("One or more unsatisfied dependencies:");
-      message.append(System.lineSeparator());
+                  logger.info("Cached artifact has expired - Recreating");
+                }
+              } else {
+                logger.info("Task execution enforced - Skipped cache check");
+              }
+            } catch (IOException ex) {
+              throw new TaskDependencyException(
+                  "Unsatisfied task output: Cannot access cached artifact "
+                      + registration.outputArtifact.getIdentifier() + ": " + ex.getMessage(), ex);
+            }
 
-      missingTasks.forEach((t) -> {
-        message.append("    * ");
-        message.append(t.getName());
-        message.append(System.lineSeparator());
-      });
-
-      throw new TaskDependencyException(message.toString());
-    }
-
-    // next up, we'll make sure that all artifact references are satisfied (and whether there is any
-    // collisions)
-    Set<ArtifactReference> generatedArtifacts = new HashSet<>();
-    Map<ArtifactReference, Task> taskRegistration = new HashMap<>();
-    Map<ArtifactReference, Set<Task>> duplicatedArtifacts = new HashMap<>();
-
-    for (Task task : this.taskQueue) {
-      for (ArtifactReference reference : task.getCreatedArtifacts()) {
-        if (!generatedArtifacts.add(reference)) {
-          Set<Task> tasks = duplicatedArtifacts.computeIfAbsent(reference, (k) -> new HashSet<>());
-
-          if (tasks.isEmpty()) {
-            tasks.add(taskRegistration.get(reference));
+            try {
+              // in this case we'll allocate a temporary directory that we'll store all of our stuff
+              // in for now (the path we're passing to the task is nondescript and may either be a
+              // file or directory at the end of its invocation, handling is up to the artifact
+              // manager
+              tempBase = Files.createTempDirectory("blackwater_");
+              outputPath = tempBase.resolve("output");
+            } catch (IOException ex) {
+              throw new TaskExecutionException(
+                  "Failed to allocate temporary output directory: " + ex.getMessage(), ex);
+            }
           }
 
-          tasks.add(task);
-        } else {
-          taskRegistration.put(reference, task);
+          // we've collected all necessary parameters, thus we can now actually perform the task
+          // execution itself
+          try (ContextImpl ctx = new ContextImpl(inputPath, outputPath)) {
+            registration.task.execute(ctx);
+          } catch (IOException ex) {
+            throw new TaskExecutionException("Failed to clean up: " + ex.getMessage(), ex);
+          }
+
+          // since the task executed just fine, we'll have to evaluate whether the task stores its
+          // results in an artifact and if so, notify the artifact manager
+          if (registration.outputArtifact != null) {
+            logger.info("Writing task output back to artifact {}",
+                registration.outputArtifact.getIdentifier());
+
+            try {
+              this.artifactManager.createArtifact(registration.outputArtifact, outputPath);
+            } catch (IOException ex) {
+              throw new TaskExecutionException(
+                  "Failed to write artifact " + registration.outputArtifact.getIdentifier()
+                      + " to cache: " + ex.getMessage(), ex);
+            }
+          }
+
+          logger.info("Success");
+        } finally {
+          if (tempBase != null) {
+            try {
+              Iterator<Path> it = Files.walk(tempBase)
+                  .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
+                  .iterator();
+
+              while (it.hasNext()) {
+                Files.deleteIfExists(it.next());
+              }
+            } catch (IOException ex) {
+              logger.error("Failed to clean up temporary execution files: " + ex.getMessage(), ex);
+            }
+          }
+        }
+      } finally {
+        if (inputArtifact != null) {
+          try {
+            inputArtifact.close();
+          } catch (IOException ignore) {
+          }
         }
       }
     }
-
-    if (!duplicatedArtifacts.isEmpty()) {
-      StringBuilder message = new StringBuilder("One or more task conflict with each other:");
-      message.append(System.lineSeparator());
-
-      duplicatedArtifacts.forEach((a, ts) -> {
-        message.append("    * ");
-        message.append(a);
-        message.append(" provided by ");
-        message.append(
-            ts.stream()
-                .map(Object::getClass)
-                .map(Class::getName)
-                .collect(Collectors.joining(", "))
-        );
-        message.append(System.lineSeparator());
-      });
-
-      throw new TaskDependencyException(message.toString());
-    }
-
-    Set<ArtifactReference> missingArtifacts = this.taskQueue.stream()
-        .flatMap((t) -> t.getRequiredArtifacts().stream())
-        .filter((a) -> !generatedArtifacts.contains(a))
-        .collect(Collectors.toSet());
-
-    if (!missingArtifacts.isEmpty()) {
-      StringBuilder message = new StringBuilder("One or more unsatisfied artifact dependencies:");
-      message.append(System.lineSeparator());
-
-      missingArtifacts.forEach((a) -> {
-        message.append("    * ");
-        message.append(a);
-        message.append(System.lineSeparator());
-      });
-
-      throw new TaskDependencyException(message.toString());
-    }
   }
 
   /**
-   * Provides a factory for customized pipeline instances.
+   * Provides contextual information to tasks and manages their respective temporary files.
    */
-  public static final class Builder {
+  private static final class ContextImpl implements AutoCloseable, Task.Context {
 
-    private Cache cache;
-    private final Set<Task> tasks = new HashSet<>();
-    private final Set<Task.Builder<?>> taskBuilders = new HashSet<>();
+    private final Path inputPath;
+    private final Path outputPath;
 
-    private Builder() {
+    private final List<Path> temporaryDirectories = new ArrayList<>();
+    private final List<Path> temporaryFiles = new ArrayList<>();
+
+    private ContextImpl(@Nullable Path inputPath, @Nullable Path outputPath) {
+      this.inputPath = inputPath;
+      this.outputPath = outputPath;
     }
 
     /**
-     * Constructs a new pipeline instance based on the configuration within this builder.
-     *
-     * @return a pipeline instance.
+     * {@inheritDoc}
      */
-    @NonNull
-    public Pipeline build() {
-      ArtifactManager manager = new ArtifactManager(this.cache);
+    @Override
+    public void close() throws IOException {
+      try {
+        Iterator<Path> it = this.temporaryDirectories.iterator();
 
-      Set<Task> tasks = new HashSet<>(this.tasks);
-      tasks.addAll(
-          this.taskBuilders.stream()
-              .map((b) -> b.build(manager))
-              .collect(Collectors.toSet())
-      );
+        while (it.hasNext()) {
+          Path directory = it.next();
 
-      return new Pipeline(manager, this.tasks);
+          Iterator<Path> fileIterator = Files.walk(directory)
+              .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
+              .iterator();
+
+          while (fileIterator.hasNext()) {
+            Files.deleteIfExists(fileIterator.next());
+          }
+
+          it.remove();
+        }
+
+        it = this.temporaryFiles.iterator();
+
+        while (it.hasNext()) {
+          Files.deleteIfExists(it.next());
+          it.remove();
+        }
+      } catch (IOException ex) {
+        StringBuilder builder = new StringBuilder("Failed to delete one or more temporary files: ");
+        builder.append(ex.getMessage());
+
+        if (!this.temporaryDirectories.isEmpty() || this.temporaryFiles.isEmpty()) {
+          builder.append(System.lineSeparator());
+
+          if (!this.temporaryDirectories.isEmpty()) {
+            builder.append(System.lineSeparator());
+            builder.append("Remaining temporary directories:");
+            builder.append(System.lineSeparator());
+
+            this.temporaryDirectories.forEach((p) -> {
+              builder.append(" * ");
+              builder.append(p.toAbsolutePath());
+              builder.append(System.lineSeparator());
+            });
+          }
+
+          if (!this.temporaryFiles.isEmpty()) {
+            builder.append(System.lineSeparator());
+            builder.append("Remaining temporary files:");
+            builder.append(System.lineSeparator());
+
+            this.temporaryFiles.forEach((p) -> {
+              builder.append(" * ");
+              builder.append(p.toAbsolutePath());
+              builder.append(System.lineSeparator());
+            });
+          }
+        }
+
+        throw new IOException(builder.toString(), ex);
+      }
     }
 
     /**
-     * Defines a cache implementation which is to be used with the new pipeline.
-     *
-     * @param cache a cache implementation.
-     * @return a reference to this builder instance.
+     * {@inheritDoc}
      */
-    @NonNull
-    public Builder withCache(@NonNull Cache cache) {
-      this.cache = cache;
-      return this;
+    @Override
+    public Path allocateTemporaryDirectory() throws IOException {
+      Path directory = Files.createTempDirectory("blackwater_task_");
+      this.temporaryDirectories.add(directory);
+      return directory;
     }
-
-    /**
-     * Selects a filesystem based cache implementation for the new pipeline.
-     *
-     * @param directory a cache directory.
-     * @return a reference to this builder instance.
-     */
-    @NonNull
-    public Builder withCacheDirectory(@NonNull Path directory) {
-      return this.withCache(new LocalFileCache(directory));
-    }
-
-    /**
-     * Selects an additional task for the new pipeline.
-     *
-     * @param task a custom task implementation.
-     * @return a reference to this builder instance.
-     */
-    @NonNull
-    public Builder withTask(@NonNull Task task) {
-      this.tasks.add(task);
-      return this;
-    }
-
-    /**
-     * Selects an additional task for the new pipeline.
-     *
-     * @param builder a custom task builder implementation.
-     * @return a reference to this builder instance.
-     */
-    @NonNull
-    public Builder withTask(@NonNull Task.Builder<?> builder) {
-      this.taskBuilders.add(builder);
-      return this;
-    }
-
-    /**
-     * Selects a temporary filesystem based cache implementation for the new pipeline.
-     *
-     * @return a reference to this builder.
-     * @throws IOException when allocating the temporary directory fails.
-     */
-    @NonNull
-    public Builder withTemporaryCache() throws IOException {
-      return this.withCache(new TemporaryFileCache());
-    }
-  }
-
-  /**
-   * provides contextual information configured tasks.
-   */
-  private class ContextImpl implements Context {
-
-    private final Set<Path> temporaryFiles = new HashSet<>();
 
     /**
      * {@inheritDoc}
@@ -302,83 +270,57 @@ public final class Pipeline {
     @NonNull
     @Override
     public Path allocateTemporaryFile() throws IOException {
-      Path tmp = Files.createTempFile("blackwater_", ".tmp");
-      this.temporaryFiles.add(tmp);
-      return tmp;
-    }
-
-    /**
-     * Releases all previously allocated temporary files.
-     *
-     * @throws IOException when deleting one or more files fails.
-     */
-    private void releaseTemporaryFiles() throws IOException {
-      Map<Path, IOException> exceptions = new HashMap<>();
-
-      for (Path path : this.temporaryFiles) {
-        try {
-          Files.delete(path);
-        } catch (IOException ex) {
-          // since we're dealing with temporary files that otherwise have a chance of sticking
-          // around forever, we'll simply collect all exceptions in a map and throw a single
-          // exception in order to delete as many files as possible
-          exceptions.put(path, ex);
-        }
-      }
-
-      // clear the list of remaining temporary files before throwing any exceptions to keep the
-      // context state as clean as possible
-      this.temporaryFiles.clear();
-
-      // if there is only a single exception within our map, we'll just wrap and throw it as this is
-      // much more caller friendly than our method below
-      if (exceptions.size() == 1) {
-        IOException ex = exceptions.entrySet().iterator().next().getValue();
-        throw new IOException("Failed to delete a temporary file: " + ex.getMessage(), ex);
-      }
-
-      // note that this method of handling multiple exceptions isn't exactly pretty, however, it
-      // is the preferable option in this case as we would otherwise end up cluttering up the system
-      // more than necessary
-      // TODO: We can probably remove this once a sufficient amount of Windows installations regularly clear their temporary files
-      if (!exceptions.isEmpty()) {
-        StringBuilder message = new StringBuilder("Failed to delete multiple temporary files:");
-        message.append(System.lineSeparator());
-
-        exceptions.forEach((p, e) -> {
-          message.append("    * ");
-          message.append(p.toAbsolutePath());
-          message.append(" -> ");
-          message.append(e.getMessage());
-          message.append(System.lineSeparator());
-
-          try (StringWriter writer = new StringWriter()) {
-            try (PrintWriter printWriter = new PrintWriter(writer)) {
-              e.printStackTrace(printWriter);
-            }
-
-            Arrays.stream(writer.toString().split("\n"))
-                .map(String::trim)
-                .forEach((l) -> {
-                  message.append("          ");
-                  message.append(l);
-                  message.append(System.lineSeparator());
-                });
-          } catch (IOException ignore) {
-          }
-        });
-
-        throw new IOException(message.toString());
-      }
+      Path file = Files.createTempFile("blackwater_task_", ".tmp");
+      this.temporaryFiles.add(file);
+      return file;
     }
 
     /**
      * {@inheritDoc}
      */
-    @NonNull
+    @Nonnull
     @Override
-    public ArtifactManager getArtifactManager() {
-      return Pipeline.this.artifactManager;
+    public Optional<Path> getInputPath() {
+      return Optional.ofNullable(this.inputPath);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Nonnull
+    @Override
+    public Optional<Path> getOutputPath() {
+      return Optional.ofNullable(this.outputPath);
+    }
+  }
+
+  /**
+   * Represents a registered task and its respective execution and context parameters.
+   */
+  private static final class TaskRegistration {
+
+    private final Task task;
+    private final boolean enforceExecution;
+
+    private final ArtifactReference inputArtifact;
+    private final ArtifactReference outputArtifact;
+
+    private final Path inputFile;
+    private final Path outputFile;
+
+    private TaskRegistration(
+        @Nonnull Task task,
+        boolean enforceExecution,
+        @Nullable ArtifactReference inputArtifact,
+        @Nullable ArtifactReference outputArtifact,
+        @Nullable Path inputFile,
+        @Nullable Path outputFile) {
+      this.task = task;
+      this.enforceExecution = enforceExecution;
+      this.inputArtifact = inputArtifact;
+      this.outputArtifact = outputArtifact;
+      this.inputFile = inputFile;
+      this.outputFile = outputFile;
     }
   }
 }
