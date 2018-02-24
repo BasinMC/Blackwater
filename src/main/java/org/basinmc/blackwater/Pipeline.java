@@ -87,7 +87,9 @@ public final class Pipeline {
       // before we're just blindly executing the task, we'll evaluate whether its output artifact
       // already exists and is still considered valid to save ourselves some valuable time here
       if (!registration.enforceExecution && output.artifact != null) {
-        logger.info("Evaluating cached version of artifact {}", registration.outputArtifact);
+        assert registration.outputArtifact != null;
+        logger.info("Evaluating cached version of artifact \"{}\"",
+            registration.outputArtifact.getIdentifier());
 
         assert output.getResource() != null;
         if (registration.task.isValidArtifact(output.artifact, output.artifact.getPath())) {
