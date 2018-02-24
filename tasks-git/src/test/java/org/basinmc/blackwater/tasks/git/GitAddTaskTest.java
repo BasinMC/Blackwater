@@ -23,6 +23,9 @@ import org.mockito.Mockito;
  */
 public class GitAddTaskTest extends AbstractGitTaskTest {
 
+  /**
+   * Evaluates whether the task correctly filters files and adds them to the repository.
+   */
   @Test
   public void testAdd() throws GitAPIException, IOException, TaskExecutionException {
     InitCommand command = Git.init()
