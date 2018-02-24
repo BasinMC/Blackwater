@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
 import org.basinmc.blackwater.task.error.TaskParameterException;
-import org.eclipse.jgit.api.InitCommand;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ public class GitInitTask implements Task {
 
     try {
       logger.info("Creating a new empty git repository");
-      new InitCommand()
+      Git.init()
           .setDirectory(inputPath.toFile())
           .call();
     } catch (GitAPIException ex) {
