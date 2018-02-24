@@ -23,17 +23,19 @@ public interface Artifact extends AutoCloseable {
    * Retrieves the date and time at which this artifact was initially created.
    *
    * @return a timestamp.
+   * @throws IOException when reading the creation timestamp fails.
    */
   @Nonnull
-  Instant getCreationTimestamp();
+  Instant getCreationTimestamp() throws IOException;
 
   /**
    * Retrieves the date and time at which this artifact was last modified.
    *
    * @return a timestamp.
+   * @throws IOException when reading the modification timestamp fails.
    */
   @Nonnull
-  Instant getLastModificationTimestamp();
+  Instant getLastModificationTimestamp() throws IOException;
 
   /**
    * <p>Retrieves the path from which this artifact is available for reading.</p>
