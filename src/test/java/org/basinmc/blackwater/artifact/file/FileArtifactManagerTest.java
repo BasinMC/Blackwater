@@ -70,7 +70,7 @@ public class FileArtifactManagerTest {
       Assert.assertFalse(artifact.isPresent());
     }
 
-    Instant testTime = Instant.now().minus(Duration.ofSeconds(10));
+    Instant testTime = Instant.now().minus(Duration.ofSeconds(1));
 
     {
       Path testFile = Files.createTempFile("blackwater_test_", ".tmp");
@@ -125,7 +125,7 @@ public class FileArtifactManagerTest {
       Assert.assertFalse(artifact.isPresent());
     }
 
-    Instant testTime = Instant.now().minus(Duration.ofSeconds(10));
+    Instant testTime = Instant.now().minus(Duration.ofSeconds(1));
 
     {
       Path testFile = Files.createTempFile("blackwater_test_", ".tmp");
