@@ -47,9 +47,11 @@ public interface Task {
    * invocation or whether they still mirror the expected state of a larger process intensive
    * operation.</p>
    *
+   * @param artifact a reference to the cached artifact.
+   * @param contents a reference to the path at which contained files can be iterated and accessed.
    * @return true if the artifact is still valid, false otherwise.
    */
-  default boolean isValidArtifact(@Nonnull Artifact artifact) {
+  default boolean isValidArtifact(@Nonnull Artifact artifact, @Nonnull Path contents) {
     return true;
   }
 
