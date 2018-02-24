@@ -109,7 +109,7 @@ public interface Task {
      * designated position.
      */
     @Nonnull
-    Pipeline.Builder build();
+    Pipeline.Builder register();
 
     /**
      * Selects an artifact as an input directory for the task.
