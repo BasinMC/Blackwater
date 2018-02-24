@@ -90,7 +90,7 @@ public final class Pipeline {
         logger.info("Evaluating cached version of artifact {}", registration.outputArtifact);
 
         assert output.getResource() != null;
-        if (registration.task.isValidArtifact(output.artifact, output.getResource())) {
+        if (registration.task.isValidArtifact(output.artifact, output.artifact.getPath())) {
           logger.info("Valid artifact cache - Skipped");
           return;
         }
