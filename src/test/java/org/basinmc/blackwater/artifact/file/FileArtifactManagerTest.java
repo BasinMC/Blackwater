@@ -95,10 +95,14 @@ public class FileArtifactManagerTest {
       Assert.assertEquals(expectedPath, a.getPath());
 
       Instant creationTime = a.getCreationTimestamp();
-      Assert.assertTrue(testTime.equals(creationTime) || testTime.isBefore(creationTime));
+      Assert.assertTrue(
+          Instant.EPOCH.equals(creationTime) || testTime.equals(creationTime) || testTime
+              .isBefore(creationTime));
 
       Instant modificationTime = a.getLastModificationTimestamp();
-      Assert.assertTrue(testTime.equals(modificationTime) || testTime.isBefore(modificationTime));
+      Assert.assertTrue(
+          Instant.EPOCH.equals(modificationTime) || testTime.equals(modificationTime) || testTime
+              .isBefore(modificationTime));
 
       String contents = new String(Files.readAllBytes(a.getPath()), StandardCharsets.UTF_8);
       Assert.assertEquals(TEST_VALUE, contents);
@@ -147,10 +151,14 @@ public class FileArtifactManagerTest {
       Assert.assertEquals(expectedPath, a.getPath());
 
       Instant creationTime = a.getCreationTimestamp();
-      Assert.assertTrue(testTime.equals(creationTime) || testTime.isBefore(creationTime));
+      Assert.assertTrue(
+          Instant.EPOCH.equals(creationTime) || testTime.equals(creationTime) || testTime
+              .isBefore(creationTime));
 
       Instant modificationTime = a.getLastModificationTimestamp();
-      Assert.assertTrue(testTime.equals(modificationTime) || testTime.isBefore(modificationTime));
+      Assert.assertTrue(
+          Instant.EPOCH.equals(modificationTime) || testTime.equals(modificationTime) || testTime
+              .isBefore(modificationTime));
 
       String contents = new String(Files.readAllBytes(a.getPath()), StandardCharsets.UTF_8);
       Assert.assertEquals(TEST_VALUE, contents);
