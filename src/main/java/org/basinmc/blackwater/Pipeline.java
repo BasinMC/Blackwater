@@ -166,6 +166,15 @@ public final class Pipeline {
     });
   }
 
+  /**
+   * Retrieves a wrapped output path which is automatically cleaned up at the end of its lifecycle.
+   *
+   * @param registration a task registration.
+   * @return a wrapped output path.
+   * @throws TaskDependencyException when an output artifact is specified but no artifact manager is
+   * configured.
+   * @throws TaskExecutionException when creating the output path fails.
+   */
   @Nonnull
   private CloseableTaskResource getOutputPath(
       @Nonnull TaskRegistration registration) throws TaskException {
