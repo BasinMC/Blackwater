@@ -25,7 +25,8 @@ public class GitApplyMailArchiveTaskTest extends AbstractExecutableGitTaskTest {
    * Evaluates whether the task correctly applies a set of patches to a test file.
    */
   @Test
-  public void testExecute() throws IOException, GitAPIException, TaskExecutionException {
+  public void testExecute()
+      throws IOException, GitAPIException, TaskExecutionException, InterruptedException {
     this.extract("/am-apply/test", Paths.get("test"));
     this.extract("/am-apply/0001-Test-Patch.patch", Paths.get("patches/0001-Test-Patch.patch"));
 
@@ -43,6 +44,17 @@ public class GitApplyMailArchiveTaskTest extends AbstractExecutableGitTaskTest {
           .setCommitter("John Doe", "john@example.org")
           .setMessage("Initial Commit")
           .call();
+
+      // we'll configure the author name and contact address for this repository to prevent any
+      // test issues
+      new ProcessBuilder("git", "config", "user.name", "John Doe")
+          .directory(this.getBase().toFile())
+          .start()
+          .waitFor();
+      new ProcessBuilder("git", "config", "user.email", "john@example.org")
+          .directory(this.getBase().toFile())
+          .start()
+          .waitFor();
 
       // now we can simply mock the context and run the task to produce the end result and compare
       // it against our target values
