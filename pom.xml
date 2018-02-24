@@ -11,9 +11,7 @@
 
   <!-- Artifact Metadata -->
   <name>Blackwater</name>
-  <description>Provides generic methods for decompiling and patching Java libraries and
-    applications.
-  </description>
+  <description>Provides a generic framework to chain and execute tasks.</description>
   <url>https://github.com/BasinMC/Blackwater</url>
   <inceptionYear>2018</inceptionYear>
 
