@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import org.basinmc.blackwater.artifact.Artifact;
@@ -69,7 +70,7 @@ public class FileArtifactManagerTest {
       Assert.assertFalse(artifact.isPresent());
     }
 
-    Instant testTime = Instant.now();
+    Instant testTime = Instant.now().minus(Duration.ofSeconds(10));
 
     {
       Path testFile = Files.createTempFile("blackwater_test_", ".tmp");
@@ -120,7 +121,7 @@ public class FileArtifactManagerTest {
       Assert.assertFalse(artifact.isPresent());
     }
 
-    Instant testTime = Instant.now();
+    Instant testTime = Instant.now().minus(Duration.ofSeconds(10));
 
     {
       Path testFile = Files.createTempFile("blackwater_test_", ".tmp");
