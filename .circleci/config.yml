@@ -24,7 +24,7 @@ jobs:
           path: pipeline/target/surefire-reports
       - run: |
           mkdir /tmp/artifacts/
-          cp target/org.basinmc.blackwater-*.jar /tmp/artifacts/
+          cp pipeline/target/org.basinmc.blackwater-*.jar /tmp/artifacts/
           cp -r target/apidocs/ /tmp/artifacts/
           cp -r target/surefire-reports/ /tmp/artifacts/
       - store_artifacts:
