@@ -1,78 +1,58 @@
 package org.basinmc.blackwater.artifact;
 
-import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
+import java.time.Instant;
+import javax.annotation.Nonnull;
 
 /**
- * Represents an artifact which has been retrieved from the cache or generated during this build.
+ * Represents a stored artifact which has been previously stored by a task and is now available for
+ * reading.
  *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
-public final class Artifact {
-
-  private final ArtifactReference reference;
-  private final Path path;
-
-  Artifact(@NonNull ArtifactReference reference, @NonNull Path path) {
-    this.reference = reference;
-    this.path = path;
-  }
-
-  /**
-   * @return the artifact identification.
-   */
-  @NonNull
-  public ArtifactReference getReference() {
-    return this.reference;
-  }
-
-  /**
-   * @return the location at which this artifact is currently accessible.
-   */
-  @NonNull
-  public Path getPath() {
-    return this.path;
-  }
-
-  /**
-   * <p>Opens a new input stream for this artifact.</p>
-   *
-   * <p>Note that this implementation will not attempt to close the constructed input stream. It's
-   * the caller's responsibility to correctly free their allocated resources.</p>
-   *
-   * @return a new input stream for this artifact's contents.
-   * @throws IOException when accessing the artifact fails.
-   */
-  @NonNull
-  public InputStream openStream() throws IOException {
-    return Files.newInputStream(this.path);
-  }
+public interface Artifact extends AutoCloseable {
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || this.getClass() != o.getClass()) {
-      return false;
-    }
-    Artifact artifact = (Artifact) o;
-    return Objects.equals(this.reference, artifact.reference) &&
-        Objects.equals(this.path, artifact.path);
-  }
+  void close() throws IOException;
 
   /**
-   * {@inheritDoc}
+   * Retrieves the date and time at which this artifact was initially created.
+   *
+   * @return a timestamp.
    */
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.reference, this.path);
-  }
+  @Nonnull
+  Instant getCreationTimestamp();
+
+  /**
+   * Retrieves the date and time at which this artifact was last modified.
+   *
+   * @return a timestamp.
+   */
+  @Nonnull
+  Instant getLastModificationTimestamp();
+
+  /**
+   * <p>Retrieves the path from which this artifact is available for reading.</p>
+   *
+   * <p>Since task output is stored as-is (e.g. files stay files and directories technically stay
+   * directories), this path may be backed by a custom {@link java.nio.file.FileSystem} instance
+   * which grants access to the archive contents.</p>
+   *
+   * @return a reference to the artifact contents.
+   */
+  @Nonnull
+  Path getPath();
+
+  /**
+   * Retrieves the reference which uniquely identifies this artifact within its parent manager
+   * implementation.
+   *
+   * @return a reference.
+   */
+  @Nonnull
+  ArtifactReference getReference();
 }

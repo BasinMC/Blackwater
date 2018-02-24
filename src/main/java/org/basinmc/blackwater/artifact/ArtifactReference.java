@@ -1,117 +1,25 @@
 package org.basinmc.blackwater.artifact;
 
-import edu.umd.cs.findbugs.annotations.NonNull;
-import edu.umd.cs.findbugs.annotations.Nullable;
-import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
- * Points to a unique artifact which may be written to or retrieved from an artifact cache or
- * generated as part of a pipeline task.
+ * <p>Provides a pointer to a specific artifact within an artifact manager.</p>
+ *
+ * <p>References always refer to a single specific artifact within the cache regardless of their
+ * implementation. This means that requesting an artifact from the manager using the same reference
+ * or a reference which is equal in value from the manager will always produce the same result.</p>
  *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
-public class ArtifactReference {
-
-  private final String classifier;
-  private final String identifier;
-  private final String type;
-  private final String version;
-
-  public ArtifactReference(
-      @NonNull String identifier,
-      @Nullable String classifier,
-      @NonNull String version,
-      @NonNull String type) {
-    this.identifier = identifier;
-    this.classifier = classifier;
-    this.version = version;
-    this.type = type;
-  }
-
-  public ArtifactReference(
-      @NonNull String identifier,
-      @NonNull String version,
-      @NonNull String type) {
-    this(identifier, null, version, type);
-  }
-
-  public ArtifactReference(
-      @NonNull String identifier,
-      @NonNull String version) {
-    this(identifier, null, version, "jar");
-  }
+@FunctionalInterface
+public interface ArtifactReference {
 
   /**
-   * {@inheritDoc}
+   * Retrieves the human readable identifier which is represented by this reference (typically this
+   * is some form of coordinate).
+   *
+   * @return a unique identifier for the referenced artifact.
    */
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || this.getClass() != o.getClass()) {
-      return false;
-    }
-    ArtifactReference that = (ArtifactReference) o;
-    return Objects.equals(this.identifier, that.identifier) &&
-        Objects.equals(this.classifier, that.classifier) &&
-        Objects.equals(this.version, that.version) &&
-        Objects.equals(this.type, that.type);
-  }
-
-  /**
-   * @return an optional artifact classifier (or null when none is desired).
-   */
-  @Nullable
-  public String getClassifier() {
-    return this.classifier;
-  }
-
-  /**
-   * @return a descriptive artifact identifier.
-   */
-  @NonNull
-  public String getIdentifier() {
-    return this.identifier;
-  }
-
-  /**
-   * @return an artifact type identifier (typically a file extension).
-   */
-  @NonNull
-  public String getType() {
-    return this.type;
-  }
-
-  /**
-   * @return an artifact revision.
-   */
-  @NonNull
-  public String getVersion() {
-    return this.version;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.identifier, this.classifier, this.version, this.type);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String toString() {
-    return "ArtifactReference{" +
-        (
-            "identifier=\"" + this.identifier + "\", " +
-                "classifier=" + (this.classifier == null ? "null" : "\"" + this.classifier + "\"")
-                + ", " +
-                "version=\"" + this.version + "\", " +
-                "type=\"" + this.type + "\""
-        ) +
-        "}";
-  }
+  @Nonnull
+  String getIdentifier();
 }
