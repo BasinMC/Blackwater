@@ -1,0 +1,16 @@
+From 14cadea14012507acd9ebe92987e5e4ced6697df Mon Sep 17 00:00:00 2001
+From: Johannes Donath <johannesd@torchmind.com>
+Date: Sat, 24 Feb 2018 14:20:42 +0100
+Subject: [PATCH] Test Patch.
+
+
+diff --git a/test b/test
+index 6de7b8c..01eae05 100644
+--- a/test
++++ b/test
+@@ -1 +1 @@
+-This is a test file.
++This is a patched test file.
+-- 
+2.15.1.windows.2
+
