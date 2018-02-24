@@ -13,18 +13,6 @@ import javax.annotation.Nonnull;
 public interface ArtifactManager {
 
   /**
-   * Retrieves a cached artifact from within the manager (for instance, to use it as an input within
-   * a task execution).
-   *
-   * @param reference a reference to the desired artifact.
-   * @return a reference to the artifact or, if no cached version of the artifact exists yet, an
-   * empty optional.
-   * @throws IOException when opening the artifact for reading fails.
-   */
-  @Nonnull
-  Optional<Artifact> getArtifact(@Nonnull ArtifactReference reference) throws IOException;
-
-  /**
    * <p>Writes the supplied source file or directory into the cache with the specified artifact
    * identification.</p>
    *
@@ -40,4 +28,16 @@ public interface ArtifactManager {
    */
   void createArtifact(@Nonnull ArtifactReference reference, @Nonnull Path source)
       throws IOException;
+
+  /**
+   * Retrieves a cached artifact from within the manager (for instance, to use it as an input within
+   * a task execution).
+   *
+   * @param reference a reference to the desired artifact.
+   * @return a reference to the artifact or, if no cached version of the artifact exists yet, an
+   * empty optional.
+   * @throws IOException when opening the artifact for reading fails.
+   */
+  @Nonnull
+  Optional<Artifact> getArtifact(@Nonnull ArtifactReference reference) throws IOException;
 }
