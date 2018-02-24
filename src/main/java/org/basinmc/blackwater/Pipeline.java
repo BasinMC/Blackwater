@@ -14,6 +14,7 @@ import org.basinmc.blackwater.artifact.Artifact;
 import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
 import org.basinmc.blackwater.task.Task;
+import org.basinmc.blackwater.task.Task.ParameterBuilder;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
@@ -44,6 +45,16 @@ public final class Pipeline {
       @NonNull List<TaskRegistration> tasks) {
     this.artifactManager = artifactManager;
     this.taskQueue = new ArrayList<>(tasks);
+  }
+
+  /**
+   * Creates a new empty pipeline factory.
+   *
+   * @return a factory.
+   */
+  @Nonnull
+  public static Builder builder() {
+    return new Builder();
   }
 
   /**
@@ -224,6 +235,143 @@ public final class Pipeline {
     // if no output is desired, we'll simply wrap null
     return new CloseableTaskResource(null, null, () -> {
     });
+  }
+
+  /**
+   * Provides a factory for pipeline instances.
+   */
+  public static final class Builder {
+
+    private ArtifactManager artifactManager;
+    private final List<TaskRegistration> registrations = new ArrayList<>();
+
+    private Builder() {
+    }
+
+    /**
+     * Constructs a new pipeline using the configuration within this builder.
+     *
+     * @return a pipeline.
+     */
+    @Nonnull
+    public Pipeline build() {
+      return new Pipeline(this.artifactManager, this.registrations);
+    }
+
+    /**
+     * Selects an artifact manager to retrieve/store artifacts from/in to speed up the pipeline
+     * execution.
+     *
+     * @param artifactManager a custom artifact manager.
+     * @return a reference to this builder.
+     */
+    @Nonnull
+    public Builder withArtifactManager(@Nonnull ArtifactManager artifactManager) {
+      this.artifactManager = artifactManager;
+      return this;
+    }
+
+    /**
+     * Appends a new task to the factory configuration.
+     *
+     * @param task a task.
+     * @return a reference to the task parameter builder.
+     */
+    @Nonnull
+    public ParameterBuilder withTask(@Nonnull Task task) {
+      return new ParameterBuilderImpl(task);
+    }
+
+    /**
+     * Provides a factory for task registrations.
+     */
+    private final class ParameterBuilderImpl implements ParameterBuilder {
+
+      private final Task task;
+      private boolean enforceExecution;
+
+      private ArtifactReference inputArtifact;
+      private ArtifactReference outputArtifact;
+
+      private Path inputFile;
+      private Path outputFile;
+
+      private ParameterBuilderImpl(@Nonnull Task task) {
+        this.task = task;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public Builder register() {
+        Builder.this.registrations.add(new TaskRegistration(
+            this.task,
+            this.enforceExecution,
+            this.inputArtifact,
+            this.outputArtifact,
+            this.inputFile,
+            this.outputFile
+        ));
+
+        return Builder.this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public ParameterBuilder withInputArtifact(@Nonnull ArtifactReference artifact) {
+        this.inputFile = null;
+        this.inputArtifact = artifact;
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public ParameterBuilder withInputFile(@Nonnull Path file) {
+        this.inputArtifact = null;
+        this.inputFile = file;
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public ParameterBuilder withOutputArtifact(@Nonnull ArtifactReference artifact) {
+        this.outputFile = null;
+        this.outputArtifact = artifact;
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public ParameterBuilder withOutputFile(@Nonnull Path file) {
+        this.outputArtifact = null;
+        this.outputFile = file;
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @Nonnull
+      @Override
+      public ParameterBuilder withForcedExecution(boolean value) {
+        this.enforceExecution = value;
+        return this;
+      }
+    }
   }
 
   /**
