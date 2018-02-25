@@ -27,6 +27,9 @@ jobs:
           cp pipeline/target/org.basinmc.blackwater.pipeline-*.jar /tmp/artifacts/pipeline/
           cp -r pipeline/target/apidocs/ /tmp/artifacts/pipeline/
           cp -r pipeline/target/surefire-reports/ /tmp/artifacts/pipeline/
+          mkdir /tmp/artifacts/artifacts-maven/
+          cp pipeline/target/org.basinmc.blackwater.artifacts.maven-*.jar /tmp/artifacts/artifacts-maven/
+          cp -r artifacts-maven/target/apidocs/ /tmp/artifacts/artifacts-maven/
           mkdir /tmp/artifacts/tasks-git/
           cp tasks-git/target/org.basinmc.blackwater.tasks.git-*.jar /tmp/artifacts/tasks-git/
           cp -r tasks-git/target/apidocs/ /tmp/artifacts/tasks-git/

@@ -96,6 +96,22 @@
       </dependency>
 
       <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-artifact</artifactId>
+        <version>2.2.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-model</artifactId>
+        <version>2.2.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.maven</groupId>
+        <artifactId>maven-project</artifactId>
+        <version>2.2.1</version>
+      </dependency>
+
+      <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>4.12</version>
@@ -201,6 +217,7 @@
   <modules>
     <module>pipeline</module>
     <module>tasks-git</module>
+    <module>artifacts-maven</module>
   </modules>
 
   <profiles>
