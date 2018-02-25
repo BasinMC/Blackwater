@@ -28,7 +28,7 @@ Features
 Usage
 -----
 
-**Artifact Coordinates:** `org.basinmc:blackwater:1.0-SNAPSHOT`
+**Artifact Coordinates:** `org.basinmc:blackwater:0.1.0-SNAPSHOT`
 
 ```xml
 <repository>
@@ -42,7 +42,7 @@ Usage
 <dependency>
   <groupId>org.basinmc.blackwater</groupId>
   <artifactId>pipeline</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
