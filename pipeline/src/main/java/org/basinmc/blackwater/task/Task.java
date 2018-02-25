@@ -58,6 +58,22 @@ public interface Task {
   }
 
   /**
+   * Evaluates whether this task requires an input parameter to function in its current
+   * configuration.
+   */
+  default boolean requiresInputParameter() {
+    return false;
+  }
+
+  /**
+   * Evaluates whether this task requires an output parameter to function in its current
+   * configuration.
+   */
+  default boolean requiresOutputParameter() {
+    return false;
+  }
+
+  /**
    * Provides an execution context to tasks during their invocation.
    */
   interface Context {
@@ -92,10 +108,32 @@ public interface Task {
     Optional<Path> getInputPath();
 
     /**
+     * @throws TaskParameterException when no input parameter was specified.
+     * @see #getInputPath()
+     */
+    @NonNull
+    default Path getRequiredInputPath() throws TaskParameterException {
+      return this.getInputPath()
+          .orElseThrow(() -> new TaskParameterException(
+              "Illegal task configuration: Input parameter is required"));
+    }
+
+    /**
      * Retrieves the location at which the set of output files (if any) are located.
      */
     @Nonnull
     Optional<Path> getOutputPath();
+
+    /**
+     * @throws TaskParameterException when no output parameter was specified.
+     * @see #getOutputPath()
+     */
+    @NonNull
+    default Path getRequiredOutputPath() throws TaskParameterException {
+      return this.getOutputPath()
+          .orElseThrow(() -> new TaskParameterException(
+              "Illegal task configuration: Output parameter is required"));
+    }
   }
 
   /**
@@ -107,9 +145,12 @@ public interface Task {
     /**
      * Assembles the parameters within this builder and adds the task to the pipeline at its
      * designated position.
+     *
+     * @throws TaskParameterException when the task requires an input or output parameter but none
+     * was specified.
      */
     @Nonnull
-    Pipeline.Builder register();
+    Pipeline.Builder register() throws TaskParameterException;
 
     /**
      * Selects an artifact as an input directory for the task.

@@ -37,9 +37,7 @@ public class DownloadFileTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path out = context.getOutputPath()
-        .orElseThrow(
-            () -> new TaskParameterException("Illegal task configuration: Output path expected"));
+    Path out = context.getRequiredOutputPath();
 
     try (InputStream inputStream = this.fileUrl.openStream()) {
       try (ReadableByteChannel inputChannel = Channels.newChannel(inputStream)) {
@@ -53,5 +51,13 @@ public class DownloadFileTask implements Task {
           "Failed to download file from URL " + this.fileUrl.toExternalForm() + ": " + ex
               .getMessage(), ex);
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

@@ -35,8 +35,7 @@ public class GitFormatPatchTask extends AbstractExecutableTask {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path inputPath = context.getInputPath()
-        .orElseThrow(() -> new TaskParameterException("Input path is required"));
+    Path inputPath = context.getRequiredInputPath();
 
     if (inputPath.getFileSystem() != FileSystems.getDefault()) {
       throw new TaskParameterException("Input path cannot be on a custom filesystem");
@@ -46,8 +45,7 @@ public class GitFormatPatchTask extends AbstractExecutableTask {
       throw new TaskExecutionException("No repository at output path");
     }
 
-    Path outputPath = context.getOutputPath()
-        .orElseThrow(() -> new TaskParameterException("Output path is required"));
+    Path outputPath = context.getRequiredOutputPath();
 
     if (outputPath.getFileSystem() != FileSystems.getDefault()) {
       throw new TaskParameterException("Output path cannot be on a custom filesystem");
@@ -90,5 +88,21 @@ public class GitFormatPatchTask extends AbstractExecutableTask {
   @Override
   public String getName() {
     return "git-format-patch";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

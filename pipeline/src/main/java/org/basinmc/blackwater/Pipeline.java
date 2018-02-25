@@ -310,7 +310,19 @@ public final class Pipeline {
        */
       @Nonnull
       @Override
-      public Builder register() {
+      public Builder register() throws TaskParameterException {
+        if (this.task.requiresInputParameter() && this.inputArtifact == null
+            && this.inputFile == null) {
+          throw new TaskParameterException(
+              "Illegal task configuration: Input parameter is required");
+        }
+
+        if (this.task.requiresOutputParameter() && this.outputArtifact == null
+            && this.outputFile == null) {
+          throw new TaskParameterException(
+              "Illegal task configuration: Output parameter is required");
+        }
+
         Builder.this.registrations.add(new TaskRegistration(
             this.task,
             this.enforceExecution,

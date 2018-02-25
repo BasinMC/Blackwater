@@ -39,15 +39,13 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path inputPath = context.getInputPath()
-        .orElseThrow(() -> new TaskParameterException("Input path is required"));
+    Path inputPath = context.getRequiredInputPath();
 
     if (inputPath.getFileSystem() != FileSystems.getDefault()) {
       throw new TaskParameterException("Input path cannot be on a custom filesystem");
     }
 
-    Path outputPath = context.getOutputPath()
-        .orElseThrow(() -> new TaskParameterException("Output path is required"));
+    Path outputPath = context.getRequiredOutputPath();
 
     if (Files.notExists(outputPath.resolve(".git"))) {
       throw new TaskExecutionException("No repository at output path");
@@ -127,5 +125,21 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
   @Override
   public String getName() {
     return "git-am";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

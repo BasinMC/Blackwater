@@ -39,8 +39,7 @@ public class GitAddTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path inputPath = context.getInputPath()
-        .orElseThrow(() -> new TaskParameterException("Input path is required"));
+    Path inputPath = context.getRequiredInputPath();
 
     if (inputPath.getFileSystem() != FileSystems.getDefault()) {
       throw new TaskParameterException("Input path cannot be on a custom filesystem");
@@ -89,5 +88,13 @@ public class GitAddTask implements Task {
   @Override
   public String getName() {
     return "git-add";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
   }
 }
