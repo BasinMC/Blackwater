@@ -3,7 +3,9 @@ package org.basinmc.blackwater.task;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import javax.annotation.Nonnull;
 import org.basinmc.blackwater.Pipeline;
 import org.basinmc.blackwater.artifact.Artifact;
@@ -31,6 +33,18 @@ public interface Task {
   void execute(@NonNull Context context) throws TaskExecutionException;
 
   /**
+   * Retrieves a set of names of path parameters which are accepted by the task in addition to the
+   * input/output parameters.
+   *
+   * @return a set of parameter names.
+   * @see #getRequiredParameterNames()
+   */
+  @NonNull
+  default Set<String> getAvailableParameterNames() {
+    return Collections.emptySet();
+  }
+
+  /**
    * <p>Retrieves a human readable name for this task.</p>
    *
    * <p>The name returned by this method will be used for logging and other debugging purposes
@@ -39,6 +53,22 @@ public interface Task {
   @NonNull
   default String getName() {
     return this.getClass().getSimpleName();
+  }
+
+  /**
+   * <p>Retrieves a set of names of path parameters which are required to be populated for this task
+   * in order to permit registration.</p>
+   *
+   * <p>Note that all elements within this set are required to be part of the {@link
+   * #getAvailableParameterNames()} set as well (e.g. they will not be implicitly added to the
+   * list).</p>
+   *
+   * @return a set of parameter names.
+   * @see #getAvailableParameterNames()
+   */
+  @NonNull
+  default Set<String> getRequiredParameterNames() {
+    return this.getAvailableParameterNames();
   }
 
   /**
@@ -134,6 +164,27 @@ public interface Task {
           .orElseThrow(() -> new TaskParameterException(
               "Illegal task configuration: Output parameter is required"));
     }
+
+    /**
+     * Retrieves the location at which the specified parameter input file (if specified) is
+     * located.
+     *
+     * @param name a parameter name.
+     * @return a reference to the input file or directory or an empty optional.
+     */
+    @NonNull
+    Optional<Path> getParameterPath(@NonNull String name);
+
+    /**
+     * @throws TaskParameterException when no input parameter was specified for the indicated name.
+     * @see #getParameterPath(String)
+     */
+    @NonNull
+    default Path getRequiredParameterPath(@NonNull String name) throws TaskParameterException {
+      return this.getParameterPath(name)
+          .orElseThrow(() -> new TaskParameterException(
+              "Illegal task configuration: \"" + name + "\" parameter is required"));
+    }
   }
 
   /**
@@ -191,6 +242,32 @@ public interface Task {
      */
     @Nonnull
     ParameterBuilder withOutputFile(@Nonnull Path file);
+
+    /**
+     * Selects an artifact for the specified input parameter.
+     *
+     * @param name a parameter name.
+     * @param artifact an artifact reference.
+     * @return a reference to this builder.
+     * @throws TaskParameterException when the specified parameter is not accepted by the task.
+     * @see #withParameter(String, Path)
+     */
+    @NonNull
+    ParameterBuilder withParameter(@NonNull String name, @NonNull ArtifactReference artifact)
+        throws TaskParameterException;
+
+    /**
+     * Selects a file for the specified input parameter.
+     *
+     * @param name a parameter name.
+     * @param file a file or directory reference.
+     * @return a reference to this builder.
+     * @throws TaskParameterException when the specified parameter is not accepted by the task.
+     * @see #withParameter(String, ArtifactReference)
+     */
+    @NonNull
+    ParameterBuilder withParameter(@NonNull String name, @NonNull Path file)
+        throws TaskParameterException;
 
     /**
      * @see #withForcedExecution(boolean)
