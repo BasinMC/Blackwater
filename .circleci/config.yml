@@ -34,6 +34,9 @@ jobs:
           cp tasks-git/target/org.basinmc.blackwater.tasks.git-*.jar /tmp/artifacts/tasks-git/
           cp -r tasks-git/target/apidocs/ /tmp/artifacts/tasks-git/
           cp -r tasks-git/target/surefire-reports/ /tmp/artifacts/tasks-git/
+          mkdir /tmp/artifacts/tasks-maven/
+          cp tasks-maven/target/org.basinmc.blackwater.tasks.maven-*.jar /tmp/artifacts/tasks-maven/
+          cp -r tasks-maven/target/apidocs/ /tmp/artifacts/tasks-maven/
       - store_artifacts:
           path: /tmp/artifacts/
           destination: /
