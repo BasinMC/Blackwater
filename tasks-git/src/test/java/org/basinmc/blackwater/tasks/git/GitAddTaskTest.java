@@ -38,8 +38,8 @@ public class GitAddTaskTest extends AbstractGitTaskTest {
           "!!!_test123_!!!".getBytes(StandardCharsets.UTF_8));
 
       Context context = Mockito.mock(Context.class);
-      Mockito.when(context.getInputPath())
-          .thenReturn(Optional.of(this.getBase()));
+      Mockito.when(context.getRequiredInputPath())
+          .thenReturn(this.getBase());
 
       Task task = new GitAddTask((p) -> Paths.get("fileA").equals(p));
       task.execute(context);

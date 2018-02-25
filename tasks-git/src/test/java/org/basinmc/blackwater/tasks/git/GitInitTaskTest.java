@@ -29,8 +29,8 @@ public class GitInitTaskTest extends AbstractGitTaskTest {
   @Test
   public void testCreation() throws TaskExecutionException, IOException {
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getInputPath())
-        .thenReturn(Optional.of(this.getBase()));
+    Mockito.when(context.getRequiredInputPath())
+        .thenReturn(this.getBase());
 
     Task task = new GitInitTask();
     task.execute(context);
@@ -50,8 +50,8 @@ public class GitInitTaskTest extends AbstractGitTaskTest {
     Files.createDirectories(repositoryPath);
 
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getInputPath())
-        .thenReturn(Optional.of(this.getBase()));
+    Mockito.when(context.getRequiredInputPath())
+        .thenReturn(this.getBase());
 
     Task task = new GitInitTask();
     task.execute(context);

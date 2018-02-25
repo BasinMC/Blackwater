@@ -68,8 +68,8 @@ public class DownloadFileTaskTest extends AbstractTaskTest {
     Path outputFile = this.getBase().resolve("output.html");
 
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getOutputPath())
-        .thenReturn(Optional.of(outputFile));
+    Mockito.when(context.getRequiredOutputPath())
+        .thenReturn(outputFile);
 
     Task task = new DownloadFileTask(url);
     task.execute(context);
