@@ -1,5 +1,9 @@
 package org.basinmc.blackwater.utility;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Iterator;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
@@ -19,6 +23,39 @@ public class CloseableResource<R, E extends Exception> implements AutoCloseable 
   }
 
   /**
+   * Creates a closeable resource for a temporary directory.
+   *
+   * @return a resource.
+   * @throws IOException when allocating a new temporary directory fails.
+   */
+  @Nonnull
+  public static CloseableResource<Path, IOException> allocateTemporaryDirectory()
+      throws IOException {
+    Path tmp = Files.createTempDirectory("blackwater_");
+    return new CloseableResource<>(tmp, () -> {
+      Iterator<Path> it = Files.walk(tmp)
+          .sorted((p1, p2) -> p2.getNameCount() - p1.getNameCount())
+          .iterator();
+
+      while (it.hasNext()) {
+        Files.deleteIfExists(it.next());
+      }
+    });
+  }
+
+  /**
+   * Creates a closeable resource for a temporary file.
+   *
+   * @return a resource.
+   * @throws IOException when allocating a new temporary file fails.
+   */
+  @Nonnull
+  public static CloseableResource<Path, IOException> allocateTemporaryFile() throws IOException {
+    Path tmp = Files.createTempFile("blackwater_", ".tmp");
+    return new CloseableResource<>(tmp, () -> Files.deleteIfExists(tmp));
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -29,7 +66,6 @@ public class CloseableResource<R, E extends Exception> implements AutoCloseable 
   /**
    * Retrieves the actual wrapped resource.
    */
-  @Nullable
   public R getResource() {
     return this.resource;
   }
