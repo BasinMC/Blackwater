@@ -265,6 +265,17 @@ public final class Pipeline {
   private CloseableResource<Map<String, Path>, IOException> populateParameterMap(
       @NonNull TaskRegistration registration) throws TaskDependencyException {
     Map<String, Path> parameters = new HashMap<>(registration.pathParameters);
+
+    if (registration.artifactParameters.isEmpty()) {
+      return new CloseableResource<>(parameters, () -> {
+      });
+    }
+
+    if (this.artifactManager == null) {
+      throw new TaskDependencyException(
+          "Unsatisfied task output: Cannot resolve artifact parameters without configured artifact manager");
+    }
+
     Set<Artifact> artifacts = new HashSet<>();
 
     for (Map.Entry<String, ArtifactReference> entry : registration.artifactParameters.entrySet()) {
