@@ -2,8 +2,11 @@ package org.basinmc.blackwater.tasks.git;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.basinmc.blackwater.task.error.TaskParameterException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -30,8 +33,14 @@ public class GitCommitTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
+    Path inputPath = context.getRequiredInputPath();
+
+    if (inputPath.getFileSystem() != FileSystems.getDefault()) {
+      throw new TaskParameterException("Input path cannot be on a custom filesystem");
+    }
+
     FileRepositoryBuilder builder = new FileRepositoryBuilder()
-        .setWorkTree(context.getRequiredInputPath().toFile());
+        .setWorkTree(inputPath.toFile());
 
     try (Repository repository = builder.build()) {
       try (Git git = new Git(repository)) {
