@@ -89,6 +89,13 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
     // since the repository is now in an acceptable state, we'll iterate over the patches in our
     // input directory one by one in their respective order in their originating history (e.g. based
     // on their prefix)
+    logger.info("Applying patches ...");
+
+    if (!Files.exists(inputPath)) {
+      logger.warn("  Patch directory is missing - Nothing to apply");
+      return;
+    }
+
     try {
       Iterator<Path> it = Files.walk(inputPath, 1)
           .filter((p) -> PATCH_FILE_FORMAT.matcher(p.getFileName().toString()).matches())
