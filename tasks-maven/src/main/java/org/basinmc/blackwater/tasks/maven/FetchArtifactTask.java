@@ -1,14 +1,9 @@
 package org.basinmc.blackwater.tasks.maven;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.ProjectBuildingRequest;
-import org.apache.maven.shared.dependencies.DefaultDependableCoordinate;
+import org.apache.maven.shared.dependencies.DependableCoordinate;
 import org.apache.maven.shared.dependencies.resolve.DependencyResolver;
 import org.apache.maven.shared.dependencies.resolve.DependencyResolverException;
 import org.basinmc.blackwater.task.Task;
@@ -27,49 +22,15 @@ public class FetchArtifactTask implements Task {
 
   private final DependencyResolver resolver;
   private final ProjectBuildingRequest buildingRequest;
-  private final List<ArtifactRepository> repositories;
-
-  private final DefaultDependableCoordinate coordinate = new DefaultDependableCoordinate();
+  private final DependableCoordinate coordinate;
 
   public FetchArtifactTask(
       @Nonnull DependencyResolver resolver,
       @Nonnull ProjectBuildingRequest buildingRequest,
-      @Nonnull List<ArtifactRepository> repositories,
-      @Nonnull String groupId,
-      @Nonnull String artifactId,
-      @Nonnull String version,
-      @Nonnull String type,
-      @Nullable String classifier) {
+      @NonNull DependableCoordinate coordinate) {
     this.resolver = resolver;
     this.buildingRequest = buildingRequest;
-    this.repositories = new ArrayList<>(repositories);
-
-    this.coordinate.setGroupId(groupId);
-    this.coordinate.setArtifactId(artifactId);
-    this.coordinate.setVersion(version);
-    this.coordinate.setType(type);
-    this.coordinate.setClassifier(classifier);
-  }
-
-  public FetchArtifactTask(
-      @Nonnull DependencyResolver resolver,
-      @Nonnull ProjectBuildingRequest buildingRequest,
-      @Nonnull List<ArtifactRepository> repositories,
-      @Nonnull String groupId,
-      @Nonnull String artifactId,
-      @Nonnull String version,
-      @Nonnull String type) {
-    this(resolver, buildingRequest, repositories, groupId, artifactId, version, type, null);
-  }
-
-  public FetchArtifactTask(
-      @Nonnull DependencyResolver resolver,
-      @Nonnull ProjectBuildingRequest buildingRequest,
-      @Nonnull List<ArtifactRepository> repositories,
-      @Nonnull String groupId,
-      @Nonnull String artifactId,
-      @Nonnull String version) {
-    this(resolver, buildingRequest, repositories, groupId, artifactId, version, "jar", null);
+    this.coordinate = coordinate;
   }
 
   /**
@@ -77,9 +38,6 @@ public class FetchArtifactTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    ProjectBuildingRequest request = new DefaultProjectBuildingRequest(this.buildingRequest);
-    request.setRemoteRepositories(this.repositories);
-
     try {
       logger.info("Fetching artifact {} and all of its dependencies ...", this.coordinate);
       this.resolver.resolveDependencies(this.buildingRequest, this.coordinate, null);
