@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 import org.basinmc.blackwater.Pipeline;
 import org.basinmc.blackwater.artifact.Artifact;
+import org.basinmc.blackwater.artifact.ArtifactManager;
 import org.basinmc.blackwater.artifact.ArtifactReference;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
 import org.basinmc.blackwater.task.error.TaskParameterException;
@@ -131,6 +132,24 @@ public interface Task {
      */
     @NonNull
     Path allocateTemporaryFile() throws IOException;
+
+    /**
+     * Retrieves the configured artifact manager implementation (if any).
+     *
+     * @return an artifact manager or, if none is configured, an empty optional.
+     */
+    @NonNull
+    Optional<ArtifactManager> getArtifactManager();
+
+    /**
+     * @throws TaskParameterException when no artifact manager is configured.
+     * @see #getArtifactManager()
+     */
+    @NonNull
+    default ArtifactManager getRequiredArtifactManager() throws TaskParameterException {
+      return this.getArtifactManager()
+          .orElseThrow(() -> new TaskParameterException("Artifact manager is required"));
+    }
 
     /**
      * Retrieves the location at which the set of input files (if any) are located.

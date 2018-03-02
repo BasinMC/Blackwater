@@ -112,8 +112,12 @@ public final class Pipeline {
       // being used), we have no choice but to execute the task
       try (CloseableResource<Map<String, Path>, IOException> parameterResource = this
           .populateParameterMap(registration)) {
-        registration.task.execute(new ContextImpl(input.getResource(), output.getResource(),
-            parameterResource.getResource()));
+        registration.task.execute(new ContextImpl(
+            this.artifactManager,
+            input.getResource(),
+            output.getResource(),
+            parameterResource.getResource())
+        );
       } catch (IOException ex) {
         throw new TaskExecutionException(
             "Failed to close one or more artifact handles: " + ex.getMessage(), ex);
@@ -544,6 +548,8 @@ public final class Pipeline {
    */
   private static final class ContextImpl implements AutoCloseable, Task.Context {
 
+    private final ArtifactManager artifactManager;
+
     private final Path inputPath;
     private final Path outputPath;
     private final Map<String, Path> parameters;
@@ -551,8 +557,13 @@ public final class Pipeline {
     private final List<Path> temporaryDirectories = new ArrayList<>();
     private final List<Path> temporaryFiles = new ArrayList<>();
 
-    private ContextImpl(@Nullable Path inputPath, @Nullable Path outputPath,
+    private ContextImpl(
+        @Nullable ArtifactManager artifactManager,
+        @Nullable Path inputPath,
+        @Nullable Path outputPath,
         @NonNull Map<String, Path> parameters) {
+      this.artifactManager = artifactManager;
+
       this.inputPath = inputPath;
       this.outputPath = outputPath;
       this.parameters = parameters;
@@ -641,6 +652,15 @@ public final class Pipeline {
       Path file = Files.createTempFile("blackwater_task_", ".tmp");
       this.temporaryFiles.add(file);
       return file;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @NonNull
+    @Override
+    public Optional<ArtifactManager> getArtifactManager() {
+      return Optional.ofNullable(this.artifactManager);
     }
 
     /**
