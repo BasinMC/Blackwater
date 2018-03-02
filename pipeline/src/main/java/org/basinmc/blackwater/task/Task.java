@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.Nonnull;
 import org.basinmc.blackwater.Pipeline;
 import org.basinmc.blackwater.artifact.Artifact;
@@ -192,6 +193,19 @@ public interface Task {
    * some other execution related parameters.
    */
   interface ParameterBuilder {
+
+    /**
+     * Passes the local builder object to the supplied consumer implementation to permit
+     * externalized configuration without requiring a break up of the builder configuration itself.
+     *
+     * @param consumer an arbitrary consumer.
+     * @return a reference to this builder.
+     */
+    @NonNull
+    default ParameterBuilder apply(@NonNull Consumer<ParameterBuilder> consumer) {
+      consumer.accept(this);
+      return this;
+    }
 
     /**
      * Assembles the parameters within this builder and adds the task to the pipeline at its

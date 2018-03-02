@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -311,6 +312,19 @@ public final class Pipeline {
     private final List<TaskRegistration> registrations = new ArrayList<>();
 
     private Builder() {
+    }
+
+    /**
+     * Passes the local builder object to the supplied consumer implementation to permit
+     * externalized configuration without requiring a break up of the builder configuration itself.
+     *
+     * @param consumer an arbitrary consumer.
+     * @return a reference to this builder.
+     */
+    @NonNull
+    public Builder apply(@NonNull Consumer<Builder> consumer) {
+      consumer.accept(this);
+      return this;
     }
 
     /**
