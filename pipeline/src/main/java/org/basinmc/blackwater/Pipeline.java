@@ -112,12 +112,10 @@ public final class Pipeline {
       // being used), we have no choice but to execute the task
       try (CloseableResource<Map<String, Path>, IOException> parameterResource = this
           .populateParameterMap(registration)) {
-        registration.task.execute(new ContextImpl(
-            this.artifactManager,
-            input.getResource(),
-            output.getResource(),
-            parameterResource.getResource())
-        );
+        try (ContextImpl ctx = new ContextImpl(this.artifactManager, input.getResource(),
+            output.getResource(), parameterResource.getResource())) {
+          registration.task.execute(ctx);
+        }
       } catch (IOException ex) {
         throw new TaskExecutionException(
             "Failed to close one or more artifact handles: " + ex.getMessage(), ex);
