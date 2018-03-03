@@ -56,10 +56,13 @@
   </issueManagement>
 
   <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
     <repository>
-      <id>basin-bintray</id>
-      <name>Basin Releases</name>
-      <url>https://api.bintray.com/maven/basin/maven/Blackwater/;publish=1</url>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
 
