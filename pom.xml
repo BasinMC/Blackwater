@@ -67,14 +67,6 @@
   </distributionManagement>
 
   <!-- Dependencies -->
-  <repositories>
-    <repository>
-      <id>basin-bintray</id>
-      <name>Basin Releases</name>
-      <url>https://dl.bintray.com/basin/maven/</url>
-    </repository>
-  </repositories>
-
   <dependencyManagement>
     <dependencies>
       <dependency>
