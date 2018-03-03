@@ -39,15 +39,13 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path inputPath = context.getInputPath()
-        .orElseThrow(() -> new TaskParameterException("Input path is required"));
+    Path inputPath = context.getRequiredInputPath();
 
     if (inputPath.getFileSystem() != FileSystems.getDefault()) {
       throw new TaskParameterException("Input path cannot be on a custom filesystem");
     }
 
-    Path outputPath = context.getOutputPath()
-        .orElseThrow(() -> new TaskParameterException("Output path is required"));
+    Path outputPath = context.getRequiredOutputPath();
 
     if (Files.notExists(outputPath.resolve(".git"))) {
       throw new TaskExecutionException("No repository at output path");
@@ -91,6 +89,13 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
     // since the repository is now in an acceptable state, we'll iterate over the patches in our
     // input directory one by one in their respective order in their originating history (e.g. based
     // on their prefix)
+    logger.info("Applying patches ...");
+
+    if (!Files.exists(inputPath)) {
+      logger.warn("  Patch directory is missing - Nothing to apply");
+      return;
+    }
+
     try {
       Iterator<Path> it = Files.walk(inputPath, 1)
           .filter((p) -> PATCH_FILE_FORMAT.matcher(p.getFileName().toString()).matches())
@@ -127,5 +132,21 @@ public class GitApplyMailArchiveTask extends AbstractExecutableTask {
   @Override
   public String getName() {
     return "git-am";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

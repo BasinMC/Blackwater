@@ -56,10 +56,10 @@ public class GitFormatPatchTaskTest extends AbstractExecutableGitTaskTest {
     Path patchDirectory = this.getBase().resolve("patches");
 
     Context ctx = Mockito.mock(Context.class);
-    Mockito.when(ctx.getInputPath())
-        .thenReturn(Optional.of(this.getBase()));
-    Mockito.when(ctx.getOutputPath())
-        .thenReturn(Optional.of(patchDirectory));
+    Mockito.when(ctx.getRequiredInputPath())
+        .thenReturn(this.getBase());
+    Mockito.when(ctx.getRequiredOutputPath())
+        .thenReturn(patchDirectory);
 
     Task task = new GitFormatPatchTask("upstream");
     task.execute(ctx);

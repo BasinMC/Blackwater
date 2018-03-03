@@ -1,4 +1,5 @@
 [![License](https://img.shields.io/github/license/BasinMC/Blackwater.svg?style=flat-square)](https://www.apache.org/licenses/LICENSE-2.0.txt)
+[![Maven Central](https://img.shields.io/maven-central/v/org.basinmc.blackwater/pipeline.svg?style=flat-square)](https://search.maven.org/#search%7Cga%7C1%7Cg%3A%20org.basinmc.blackwater)
 [![GitHub Release](https://img.shields.io/github/release/BasinMC/Blackwater.svg?style=flat-square)](https://github.com/BasinMC/Blackwater/releases)
 [![CircleCI](https://img.shields.io/circleci/project/github/BasinMC/Blackwater.svg?style=flat-square)](https://circleci.com/gh/BasinMC/Blackwater)
 
@@ -28,21 +29,30 @@ Features
 Usage
 -----
 
-**Artifact Coordinates:** `org.basinmc:blackwater:0.1.0`
+**Artifact Coordinates:** `org.basinmc:blackwater:1.0`<br />
+**JavaDoc:** [Pipeline](https://www.javadoc.io/doc/org.basinmc.blackwater/pipeline/1.0) | [Maven Artifact Cache](https://www.javadoc.io/doc/org.basinmc.blackwater.artifacts/maven/1.0) | [Git Tasks](https://www.javadoc.io/doc/org.basinmc.blackwater.tasks/git/1.0) | [Maven Tasks](https://www.javadoc.io/doc/org.basinmc.blackwater.tasks/maven/1.0)
 
 ```xml
-<repository>
-  <id>basin-bintray</id>
-  <name>Basin Releases</name>
-  <url>https://dl.bintray.com/basin/maven/</url>
-</repository>
+<dependency>
+  <groupId>org.basinmc.blackwater</groupId>
+  <artifactId>pipeline</artifactId>
+  <version>1.0</version>
+</dependency>
 
-<!-- ... -->
+<!-- For unstable releases: -->
+<repository>
+  <id>ossrh</id>
+  <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+  
+  <snapshots>
+    <enabled>true</enabled>
+  </snapshots>
+</repository>
 
 <dependency>
   <groupId>org.basinmc.blackwater</groupId>
   <artifactId>pipeline</artifactId>
-  <version>0.1.0</version>
+  <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -70,7 +80,7 @@ Building
 --------
 
 1. Clone this repository via ```git clone https://github.com/BasinMC/Blackwater.git``` or download a [zip](https://github.com/BasinMC/Blackwater/archive/master.zip)
-2. Build the modification by running ```mvn clean install```
+2. Build the library by running ```mvn clean install```
 3. The resulting jars can be found in their respective ```target``` directories as well as your local maven repository
 
 Contact

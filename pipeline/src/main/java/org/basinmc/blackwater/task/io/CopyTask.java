@@ -20,12 +20,7 @@ public class CopyTask implements Task {
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
     try {
-      Files.copy(
-          context.getInputPath()
-              .orElseThrow(() -> new TaskParameterException("Input artifact or path is required")),
-          context.getOutputPath()
-              .orElseThrow(() -> new TaskParameterException("Output artifact or path is required"))
-      );
+      Files.copy(context.getRequiredInputPath(), context.getRequiredOutputPath());
     } catch (IOException ex) {
       throw new TaskExecutionException("Failed to copy files: " + ex.getMessage(), ex);
     }
@@ -38,5 +33,21 @@ public class CopyTask implements Task {
   @Override
   public String getName() {
     return "Copy";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

@@ -27,10 +27,8 @@ public class CreateArchiveTask implements Task {
    */
   @Override
   public void execute(@NonNull Context context) throws TaskExecutionException {
-    Path inputPath = context.getInputPath()
-        .orElseThrow(() -> new TaskParameterException("Input artifact or path is required"));
-    Path outputPath = context.getOutputPath()
-        .orElseThrow(() -> new TaskParameterException("Output artifact or path is required"));
+    Path inputPath = context.getRequiredInputPath();
+    Path outputPath = context.getRequiredOutputPath();
 
     Map<String, String> parameters = new HashMap<>();
     parameters.put("create", "true");
@@ -75,5 +73,21 @@ public class CreateArchiveTask implements Task {
   @Override
   public String getName() {
     return "create-archive";
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresInputParameter() {
+    return true;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean requiresOutputParameter() {
+    return true;
   }
 }

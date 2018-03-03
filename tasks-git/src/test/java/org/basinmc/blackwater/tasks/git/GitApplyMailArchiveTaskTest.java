@@ -59,10 +59,10 @@ public class GitApplyMailArchiveTaskTest extends AbstractExecutableGitTaskTest {
       // now we can simply mock the context and run the task to produce the end result and compare
       // it against our target values
       Context context = Mockito.mock(Context.class);
-      Mockito.when(context.getInputPath())
-          .thenReturn(Optional.of(this.getBase().resolve("patches")));
-      Mockito.when(context.getOutputPath())
-          .thenReturn(Optional.of(this.getBase()));
+      Mockito.when(context.getRequiredInputPath())
+          .thenReturn(this.getBase().resolve("patches"));
+      Mockito.when(context.getRequiredOutputPath())
+          .thenReturn(this.getBase());
 
       GitApplyMailArchiveTask task = new GitApplyMailArchiveTask();
       task.execute(context);

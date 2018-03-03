@@ -3,6 +3,7 @@ package org.basinmc.blackwater;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Optional;
 import org.basinmc.blackwater.artifact.Artifact;
 import org.basinmc.blackwater.artifact.ArtifactManager;
@@ -12,6 +13,7 @@ import org.basinmc.blackwater.task.Task.Context;
 import org.basinmc.blackwater.task.error.TaskDependencyException;
 import org.basinmc.blackwater.task.error.TaskException;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
+import org.basinmc.blackwater.task.error.TaskParameterException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.AdditionalAnswers;
@@ -442,5 +444,259 @@ public class PipelineTest {
 
       throw ex;
     }
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly resolves arbitrary artifact parameters.
+   */
+  @Test
+  public void testParameterArtifact() throws TaskException, IOException {
+    Path testPath = Paths.get("test");
+
+    ArtifactReference reference = Mockito.mock(ArtifactReference.class);
+    Mockito.when(reference.getIdentifier())
+        .thenReturn("test");
+
+    Artifact artifact = Mockito.mock(Artifact.class);
+    Mockito.when(artifact.getPath())
+        .thenReturn(testPath);
+
+    ArtifactManager manager = Mockito.mock(ArtifactManager.class);
+    Mockito.when(manager.getArtifact(reference))
+        .thenReturn(Optional.of(artifact));
+
+    Task task1 = Mockito.mock(Task.class);
+    Task task2 = Mockito.mock(Task.class);
+
+    Mockito.when(task1.getName())
+        .thenReturn("Task 1");
+    Mockito.when(task2.getName())
+        .thenReturn("Task 2");
+
+    Mockito.when(task1.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+    Mockito.when(task1.getRequiredParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    Mockito.doAnswer(AdditionalAnswers.<Context>answerVoid((ctx) -> {
+      Assert.assertTrue(ctx.getParameterPath("test").isPresent());
+      Assert.assertEquals(testPath, ctx.getParameterPath("test").get());
+    })).when(task1).execute(Mockito.notNull());
+
+    Mockito.doAnswer(AdditionalAnswers.<Context>answerVoid((ctx) -> {
+      Assert.assertFalse(ctx.getParameterPath("test").isPresent());
+    })).when(task2).execute(Mockito.notNull());
+
+    // @formatter:off
+    Pipeline pipeline = Pipeline.builder()
+        .withArtifactManager(manager)
+        .withTask(task1)
+          .withParameter("test", reference)
+          .register()
+        .withTask(task2).register()
+        .build();
+    pipeline.execute();
+    // @formatter:on
+
+    Mockito.verify(task1, Mockito.times(1)).execute(Mockito.notNull());
+    Mockito.verify(task2, Mockito.times(1)).execute(Mockito.notNull());
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly passes arbitrary path parameters to its tasks where
+   * configured.
+   */
+  @Test
+  public void testParameterPath() throws TaskException {
+    Path testPath = Paths.get("test");
+
+    Task task1 = Mockito.mock(Task.class);
+    Task task2 = Mockito.mock(Task.class);
+
+    Mockito.when(task1.getName())
+        .thenReturn("Task 1");
+    Mockito.when(task2.getName())
+        .thenReturn("Task 2");
+
+    Mockito.when(task1.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+    Mockito.when(task1.getRequiredParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    Mockito.doAnswer(AdditionalAnswers.<Context>answerVoid((ctx) -> {
+      Assert.assertTrue(ctx.getParameterPath("test").isPresent());
+      Assert.assertEquals(testPath, ctx.getParameterPath("test").get());
+    })).when(task1).execute(Mockito.notNull());
+
+    Mockito.doAnswer(AdditionalAnswers.<Context>answerVoid((ctx) -> {
+      Assert.assertFalse(ctx.getParameterPath("test").isPresent());
+    })).when(task2).execute(Mockito.notNull());
+
+    // @formatter:off
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task1)
+          .withParameter("test", testPath)
+          .register()
+        .withTask(task2).register()
+        .build();
+    pipeline.execute();
+    // @formatter:on
+
+    Mockito.verify(task1, Mockito.times(1)).execute(Mockito.notNull());
+    Mockito.verify(task2, Mockito.times(1)).execute(Mockito.notNull());
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to build when a required parameter is omitted.
+   */
+  @Test(expected = TaskParameterException.class)
+  public void testParameterMissing() throws TaskException {
+    Task task = Mockito.mock(Task.class);
+    Mockito.when(task.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+    Mockito.when(task.getRequiredParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task).register()
+        .build();
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to execute when a parameter artifact cannot be
+   * resolved.
+   */
+  @Test(expected = TaskDependencyException.class)
+  public void testParameterMissingArtifact() throws TaskException, IOException {
+    ArtifactReference reference = Mockito.mock(ArtifactReference.class);
+    Mockito.when(reference.getIdentifier())
+        .thenReturn("test");
+
+    ArtifactManager manager = Mockito.mock(ArtifactManager.class);
+    Mockito.when(manager.getArtifact(reference))
+        .thenReturn(Optional.empty());
+
+    Task task1 = Mockito.mock(Task.class);
+    Task task2 = Mockito.mock(Task.class);
+
+    Mockito.when(task1.getName())
+        .thenReturn("Task 1");
+    Mockito.when(task2.getName())
+        .thenReturn("Task 2");
+
+    Mockito.when(task1.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+    Mockito.when(task1.getRequiredParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    // @formatter:off
+    Pipeline pipeline = Pipeline.builder()
+        .withArtifactManager(manager)
+        .withTask(task1)
+          .withParameter("test", reference)
+          .register()
+        .build();
+    // @formatter:on
+
+    try {
+      pipeline.execute();
+    } catch (TaskDependencyException ex) {
+      Mockito.verify(task1, Mockito.never()).execute(Mockito.any());
+      Mockito.verify(task2, Mockito.never()).execute(Mockito.any());
+
+      Mockito.verify(manager, Mockito.times(1))
+          .getArtifact(reference);
+
+      throw ex;
+    }
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to execute when an artifact parameter is passed
+   * but no manager is present.
+   */
+  @Test(expected = TaskDependencyException.class)
+  public void testParameterMissingArtifactManager() throws TaskException {
+    ArtifactReference reference = Mockito.mock(ArtifactReference.class);
+    Mockito.when(reference.getIdentifier())
+        .thenReturn("test");
+
+    Task task1 = Mockito.mock(Task.class);
+    Task task2 = Mockito.mock(Task.class);
+
+    Mockito.when(task1.getName())
+        .thenReturn("Task 1");
+    Mockito.when(task2.getName())
+        .thenReturn("Task 2");
+
+    Mockito.when(task1.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+    Mockito.when(task1.getRequiredParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    // @formatter:off
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task1)
+          .withParameter("test", reference)
+          .register()
+        .build();
+    // @formatter:on
+
+    try {
+      pipeline.execute();
+    } catch (TaskDependencyException ex) {
+      Mockito.verify(task1, Mockito.never()).execute(Mockito.any());
+      Mockito.verify(task2, Mockito.never()).execute(Mockito.any());
+
+      throw ex;
+    }
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to build when an input parameter is required but
+   * never specified.
+   */
+  @Test(expected = TaskParameterException.class)
+  public void testParameterMissingInput() throws TaskException {
+    Task task = Mockito.mock(Task.class);
+    Mockito.when(task.requiresInputParameter())
+        .thenReturn(true);
+
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task).register()
+        .build();
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to build when an output parameter is required
+   * but never specified.
+   */
+  @Test(expected = TaskParameterException.class)
+  public void testParameterMissingOutput() throws TaskException {
+    Task task = Mockito.mock(Task.class);
+    Mockito.when(task.requiresOutputParameter())
+        .thenReturn(true);
+
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task).register()
+        .build();
+  }
+
+  /**
+   * Evaluates whether the pipeline correctly fails to build when an unknown parameter is passed.
+   */
+  @Test(expected = TaskParameterException.class)
+  public void testParameterUnknown() throws TaskException {
+    Task task = Mockito.mock(Task.class);
+    Mockito.when(task.getAvailableParameterNames())
+        .thenReturn(Collections.singleton("test"));
+
+    // @formatter:off
+    Pipeline pipeline = Pipeline.builder()
+        .withTask(task)
+          .withParameter("unknown", Paths.get("test"))
+          .register()
+        .build();
+    // @formatter:on
   }
 }

@@ -40,10 +40,10 @@ public class CreateArchiveTaskTest extends AbstractTaskTest {
     Files.write(inputDirectory.resolve("test3"), "This is a test".getBytes(StandardCharsets.UTF_8));
 
     Context context = Mockito.mock(Context.class);
-    Mockito.when(context.getInputPath())
-        .thenReturn(Optional.of(inputDirectory));
-    Mockito.when(context.getOutputPath())
-        .thenReturn(Optional.of(outputFile));
+    Mockito.when(context.getRequiredInputPath())
+        .thenReturn(inputDirectory);
+    Mockito.when(context.getRequiredOutputPath())
+        .thenReturn(outputFile);
 
     Task task = new CreateArchiveTask();
     task.execute(context);

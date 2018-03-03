@@ -3,35 +3,29 @@ package org.basinmc.blackwater.tasks.git;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import java.io.IOException;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.function.Predicate;
-import javax.annotation.Nonnull;
 import org.basinmc.blackwater.task.Task;
 import org.basinmc.blackwater.task.error.TaskExecutionException;
 import org.basinmc.blackwater.task.error.TaskParameterException;
-import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 /**
- * Provides a task which adds arbitrary files within the input directory to the git repository.
+ * Provides a task which commits staged changes to the repository.
  *
  * @author <a href="mailto:johannesd@torchmind.com">Johannes Donath</a>
  */
-public class GitAddTask implements Task {
+public class GitCommitTask implements Task {
 
-  private final Predicate<Path> fileFilter;
+  private final PersonIdent ident;
+  private final String message;
 
-  public GitAddTask() {
-    this((p) -> true);
-  }
-
-  public GitAddTask(@Nonnull Predicate<Path> fileFilter) {
-    this.fileFilter = fileFilter;
+  public GitCommitTask(@NonNull PersonIdent ident, @NonNull String message) {
+    this.ident = ident;
+    this.message = message;
   }
 
   /**
@@ -45,37 +39,19 @@ public class GitAddTask implements Task {
       throw new TaskParameterException("Input path cannot be on a custom filesystem");
     }
 
-    if (Files.notExists(inputPath.resolve(".git"))) {
-      throw new TaskExecutionException("No repository at input path");
-    }
-
-    Path gitBase = inputPath.resolve(".git");
     FileRepositoryBuilder builder = new FileRepositoryBuilder()
-        .setWorkTree(inputPath.toFile())
-        .setGitDir(gitBase.toFile());
+        .setWorkTree(inputPath.toFile());
 
     try (Repository repository = builder.build()) {
       try (Git git = new Git(repository)) {
-        AddCommand command = git.add();
-
-        Files.walk(inputPath)
-            .filter((p) -> !p.startsWith(gitBase))
-            .filter(Files::isRegularFile)
-            .sorted(Comparator.comparingInt(Path::getNameCount))
-            .forEach((p) -> {
-              Path relativePath = inputPath.relativize(p);
-
-              if (!this.fileFilter.test(relativePath)) {
-                return;
-              }
-
-              command.addFilepattern(relativePath.toString());
-            });
-
-        command.call();
+        git.commit()
+            .setCommitter(this.ident)
+            .setMessage(this.message)
+            .setAllowEmpty(false)
+            .call();
       }
     } catch (GitAPIException ex) {
-      throw new TaskExecutionException("Failed to add files to repository: " + ex.getMessage(), ex);
+      throw new TaskExecutionException("Failed to execute git command: " + ex.getMessage(), ex);
     } catch (IOException ex) {
       throw new TaskExecutionException("Failed to access repository: " + ex.getMessage(), ex);
     }
@@ -87,7 +63,7 @@ public class GitAddTask implements Task {
   @NonNull
   @Override
   public String getName() {
-    return "git-add";
+    return "git-commit";
   }
 
   /**

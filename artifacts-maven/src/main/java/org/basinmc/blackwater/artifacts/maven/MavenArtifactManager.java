@@ -78,17 +78,19 @@ public class MavenArtifactManager implements ArtifactManager {
     org.apache.maven.artifact.Artifact artifact = this.createMavenArtifact(artifactReference);
 
     try (CloseableResource<Path, IOException> resource = CloseableResource
-        .allocateTemporaryFile()) {
+        .allocateTemporaryDirectory()) {
+      Path outputFile = resource.getResource().resolve("output");
+
       // now if we're dealing with a directory artifact, we'll have to do copy all contents into a
       // zip archive using the fs api
       if (!artifactReference.isDirectory()) {
-        Files.copy(source, resource.getResource());
+        Files.copy(source, outputFile);
       } else {
         Map<String, String> parameters = new HashMap<>();
         parameters.put("create", "true");
 
         try (FileSystem fs = FileSystems
-            .newFileSystem(new URI("jar", resource.getResource().toUri().toString(), null),
+            .newFileSystem(new URI("jar", outputFile.toUri().toString(), null),
                 parameters)) {
           Iterator<Path> it = Files.walk(source, 1)
               .iterator();
@@ -123,7 +125,7 @@ public class MavenArtifactManager implements ArtifactManager {
         // repository
         try {
           this.artifactInstaller
-              .install(resource.getResource().toFile(), artifact, this.localRepository);
+              .install(outputFile.toFile(), artifact, this.localRepository);
         } catch (ArtifactInstallationException ex) {
           throw new IOException("Failed to install artifact: " + ex.getMessage(), ex);
         }

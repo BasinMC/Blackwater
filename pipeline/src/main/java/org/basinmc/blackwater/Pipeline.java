@@ -5,9 +5,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.basinmc.blackwater.artifact.Artifact;
@@ -104,7 +110,16 @@ public final class Pipeline {
 
       // since the cache does not contain a valid version of the task output (or no artifact is
       // being used), we have no choice but to execute the task
-      registration.task.execute(new ContextImpl(input.getResource(), output.getResource()));
+      try (CloseableResource<Map<String, Path>, IOException> parameterResource = this
+          .populateParameterMap(registration)) {
+        try (ContextImpl ctx = new ContextImpl(this.artifactManager, input.getResource(),
+            output.getResource(), parameterResource.getResource())) {
+          registration.task.execute(ctx);
+        }
+      } catch (IOException ex) {
+        throw new TaskExecutionException(
+            "Failed to close one or more artifact handles: " + ex.getMessage(), ex);
+      }
 
       // if caching the task output in an artifact is desired, we'll have to write the task output
       // back to the artifact manager here
@@ -243,6 +258,54 @@ public final class Pipeline {
   }
 
   /**
+   * Populates a map of parameters based on a task registration.
+   *
+   * @param registration a registration.
+   * @return a map of parameter paths.
+   * @throws TaskDependencyException when an artifact fails to resolve.
+   */
+  @NonNull
+  private CloseableResource<Map<String, Path>, IOException> populateParameterMap(
+      @NonNull TaskRegistration registration) throws TaskDependencyException {
+    Map<String, Path> parameters = new HashMap<>(registration.pathParameters);
+
+    if (registration.artifactParameters.isEmpty()) {
+      return new CloseableResource<>(parameters, () -> {
+      });
+    }
+
+    if (this.artifactManager == null) {
+      throw new TaskDependencyException(
+          "Unsatisfied task output: Cannot resolve artifact parameters without configured artifact manager");
+    }
+
+    Set<Artifact> artifacts = new HashSet<>();
+
+    for (Map.Entry<String, ArtifactReference> entry : registration.artifactParameters.entrySet()) {
+      try {
+        Artifact artifact = this.artifactManager.getArtifact(entry.getValue())
+            .orElseThrow(() -> new TaskDependencyException(
+                "Unsatisfied task parameter: Cannot resolve artifact " + entry.getValue()
+                    .getIdentifier() + " for parameter \"" + entry.getKey() + "\""));
+
+        artifacts.add(artifact);
+        parameters.put(entry.getKey(), artifact.getPath());
+      } catch (IOException ex) {
+        throw new TaskDependencyException(
+            "Unsatisfied task parameter: Failed to access artifact " + entry.getValue()
+                .getIdentifier() + " for parameter \"" + entry.getKey() + "\": " + ex.getMessage(),
+            ex);
+      }
+    }
+
+    return new CloseableResource<>(parameters, () -> {
+      for (Artifact artifact : artifacts) {
+        artifact.close();
+      }
+    });
+  }
+
+  /**
    * Provides a factory for pipeline instances.
    */
   public static final class Builder {
@@ -251,6 +314,19 @@ public final class Pipeline {
     private final List<TaskRegistration> registrations = new ArrayList<>();
 
     private Builder() {
+    }
+
+    /**
+     * Passes the local builder object to the supplied consumer implementation to permit
+     * externalized configuration without requiring a break up of the builder configuration itself.
+     *
+     * @param consumer an arbitrary consumer.
+     * @return a reference to this builder.
+     */
+    @NonNull
+    public Builder apply(@NonNull Consumer<Builder> consumer) {
+      consumer.accept(this);
+      return this;
     }
 
     /**
@@ -301,6 +377,9 @@ public final class Pipeline {
       private Path inputFile;
       private Path outputFile;
 
+      private final Map<String, ArtifactReference> artifactParameters = new HashMap<>();
+      private final Map<String, Path> pathParameters = new HashMap<>();
+
       private ParameterBuilderImpl(@Nonnull Task task) {
         this.task = task;
       }
@@ -310,14 +389,47 @@ public final class Pipeline {
        */
       @Nonnull
       @Override
-      public Builder register() {
+      public Builder register() throws TaskParameterException {
+        if (this.task.requiresInputParameter() && this.inputArtifact == null
+            && this.inputFile == null) {
+          throw new TaskParameterException(
+              "Illegal task configuration: Input parameter is required");
+        }
+
+        if (this.task.requiresOutputParameter() && this.outputArtifact == null
+            && this.outputFile == null) {
+          throw new TaskParameterException(
+              "Illegal task configuration: Output parameter is required");
+        }
+
+        Set<String> populatedParameters = new HashSet<>();
+        populatedParameters.addAll(this.artifactParameters.keySet());
+        populatedParameters.addAll(this.pathParameters.keySet());
+
+        Set<String> missingParameters = this.task.getRequiredParameterNames().stream()
+            .filter((n) -> !populatedParameters.contains(n))
+            .collect(Collectors.toSet());
+
+        if (!missingParameters.isEmpty()) {
+          StringBuilder builder = new StringBuilder(
+              "Illegal task configuration: One or more parameters are missing:");
+          builder.append(System.lineSeparator());
+
+          missingParameters
+              .forEach((p) -> builder.append(" * ").append(p).append(System.lineSeparator()));
+
+          throw new TaskParameterException(builder.toString());
+        }
+
         Builder.this.registrations.add(new TaskRegistration(
             this.task,
             this.enforceExecution,
             this.inputArtifact,
             this.outputArtifact,
             this.inputFile,
-            this.outputFile
+            this.outputFile,
+            this.artifactParameters,
+            this.pathParameters
         ));
 
         return Builder.this;
@@ -370,6 +482,39 @@ public final class Pipeline {
       /**
        * {@inheritDoc}
        */
+      @NonNull
+      @Override
+      public ParameterBuilder withParameter(@NonNull String name,
+          @NonNull ArtifactReference artifact)
+          throws TaskParameterException {
+        if (!this.task.getAvailableParameterNames().contains(name)) {
+          throw new TaskParameterException("No such parameter: " + name);
+        }
+
+        this.pathParameters.remove(name);
+        this.artifactParameters.put(name, artifact);
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
+      @NonNull
+      @Override
+      public ParameterBuilder withParameter(@NonNull String name, @NonNull Path file)
+          throws TaskParameterException {
+        if (!this.task.getAvailableParameterNames().contains(name)) {
+          throw new TaskParameterException("No such parameter: " + name);
+        }
+
+        this.artifactParameters.remove(name);
+        this.pathParameters.put(name, file);
+        return this;
+      }
+
+      /**
+       * {@inheritDoc}
+       */
       @Nonnull
       @Override
       public ParameterBuilder withForcedExecution(boolean value) {
@@ -401,15 +546,25 @@ public final class Pipeline {
    */
   private static final class ContextImpl implements AutoCloseable, Task.Context {
 
+    private final ArtifactManager artifactManager;
+
     private final Path inputPath;
     private final Path outputPath;
+    private final Map<String, Path> parameters;
 
     private final List<Path> temporaryDirectories = new ArrayList<>();
     private final List<Path> temporaryFiles = new ArrayList<>();
 
-    private ContextImpl(@Nullable Path inputPath, @Nullable Path outputPath) {
+    private ContextImpl(
+        @Nullable ArtifactManager artifactManager,
+        @Nullable Path inputPath,
+        @Nullable Path outputPath,
+        @NonNull Map<String, Path> parameters) {
+      this.artifactManager = artifactManager;
+
       this.inputPath = inputPath;
       this.outputPath = outputPath;
+      this.parameters = parameters;
     }
 
     /**
@@ -500,6 +655,15 @@ public final class Pipeline {
     /**
      * {@inheritDoc}
      */
+    @NonNull
+    @Override
+    public Optional<ArtifactManager> getArtifactManager() {
+      return Optional.ofNullable(this.artifactManager);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Nonnull
     @Override
     public Optional<Path> getInputPath() {
@@ -513,6 +677,15 @@ public final class Pipeline {
     @Override
     public Optional<Path> getOutputPath() {
       return Optional.ofNullable(this.outputPath);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @NonNull
+    @Override
+    public Optional<Path> getParameterPath(@NonNull String name) {
+      return Optional.ofNullable(this.parameters.get(name));
     }
   }
 
@@ -530,19 +703,26 @@ public final class Pipeline {
     private final Path inputFile;
     private final Path outputFile;
 
+    private final Map<String, ArtifactReference> artifactParameters;
+    private final Map<String, Path> pathParameters;
+
     private TaskRegistration(
         @Nonnull Task task,
         boolean enforceExecution,
         @Nullable ArtifactReference inputArtifact,
         @Nullable ArtifactReference outputArtifact,
         @Nullable Path inputFile,
-        @Nullable Path outputFile) {
+        @Nullable Path outputFile,
+        @NonNull Map<String, ArtifactReference> artifactParameters,
+        @NonNull Map<String, Path> pathParameters) {
       this.task = task;
       this.enforceExecution = enforceExecution;
       this.inputArtifact = inputArtifact;
       this.outputArtifact = outputArtifact;
       this.inputFile = inputFile;
       this.outputFile = outputFile;
+      this.artifactParameters = new HashMap<>(artifactParameters);
+      this.pathParameters = new HashMap<>(pathParameters);
     }
   }
 }
